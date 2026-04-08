@@ -48,21 +48,22 @@ function WorkModal({ isOpen, onClose, onSave, editData }) {
         address: editData.address || '',
         start_date: editData.start_date ? editData.start_date.split('T')[0] : '',
         end_date: editData.end_date ? editData.end_date.split('T')[0] : '',
-        budget: editData.budget || 0,
+        budget: String(editData.budget || 0),
         status: editData.status || 'ACTIVE',
       });
     } else {
-      setForm({ name: '', address: '', start_date: '', end_date: '', budget: 0, status: 'ACTIVE' });
+      setForm({ name: '', address: '', start_date: '', end_date: '', budget: '0', status: 'ACTIVE' });
     }
   }, [editData, isOpen]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      const payload = { ...form, budget: parseFloat(form.budget) || 0 };
       if (editData?.id) {
-        await api.updateWork(editData.id, form);
+        await api.updateWork(editData.id, payload);
       } else {
-        await api.createWork(form);
+        await api.createWork(payload);
       }
       onSave();
       onClose();
@@ -84,7 +85,7 @@ function WorkModal({ isOpen, onClose, onSave, editData }) {
         </div>
         <div className="form-group">
           <label>Orçamento Previsto (R$)</label>
-          <input className="input" type="number" step="0.01" value={form.budget} onChange={(e) => setForm({ ...form, budget: parseFloat(e.target.value) || 0 })} />
+          <input className="input" type="number" step="0.01" value={form.budget} onChange={(e) => setForm({ ...form, budget: e.target.value })} />
         </div>
         <div className="form-row">
           <div className="form-group">
@@ -113,7 +114,7 @@ function WorkModal({ isOpen, onClose, onSave, editData }) {
 /* ==================== TRANSACTION MODAL ==================== */
 function TransactionModal({ isOpen, onClose, onSave, workId, suppliers, labor, materials, prices, editData }) {
   const [form, setForm] = useState({
-    description: '', amount: 0, category: '', supplier_id: '', labor_id: '',
+    description: '', amount: '0', category: '', supplier_id: '', labor_id: '',
     date: new Date().toISOString().split('T')[0], selectedMaterial: '',
   });
 
@@ -121,7 +122,7 @@ function TransactionModal({ isOpen, onClose, onSave, workId, suppliers, labor, m
     if (editData) {
       setForm({
         description: editData.description || '',
-        amount: editData.amount || 0,
+        amount: String(editData.amount || 0),
         category: editData.category || '',
         supplier_id: editData.supplier_id || '',
         labor_id: editData.labor_id || '',
@@ -130,7 +131,7 @@ function TransactionModal({ isOpen, onClose, onSave, workId, suppliers, labor, m
       });
     } else {
       setForm({
-        description: '', amount: 0, category: '', supplier_id: '', labor_id: '',
+        description: '', amount: '0', category: '', supplier_id: '', labor_id: '',
         date: new Date().toISOString().split('T')[0], selectedMaterial: '',
       });
     }
@@ -145,7 +146,7 @@ function TransactionModal({ isOpen, onClose, onSave, workId, suppliers, labor, m
     setForm({
       ...form,
       supplier_id: price.supplier_id,
-      amount: price.price,
+      amount: String(price.price),
       description: form.description || price.material_name,
     });
   };
@@ -154,7 +155,7 @@ function TransactionModal({ isOpen, onClose, onSave, workId, suppliers, labor, m
     e.preventDefault();
     const payload = {
       description: form.description,
-      amount: form.amount,
+      amount: parseFloat(form.amount) || 0,
       category: form.category,
       date: form.date,
       work_id: workId,
@@ -211,7 +212,7 @@ function TransactionModal({ isOpen, onClose, onSave, workId, suppliers, labor, m
         <div className="form-row">
           <div className="form-group">
             <label>Valor (R$) *</label>
-            <input className="input" type="number" step="0.01" value={form.amount} onChange={(e) => setForm({ ...form, amount: parseFloat(e.target.value) || 0 })} required />
+            <input className="input" type="number" step="0.01" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} required />
           </div>
           <div className="form-group">
             <label>Data</label>

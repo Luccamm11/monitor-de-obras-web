@@ -49,12 +49,12 @@ function SupplierModal({ isOpen, onClose, onSave, materials, editData }) {
         contact: editData.contact || '',
         phone: editData.phone || '',
         category: editData.category || '',
-        tax_rate: editData.tax_rate || 0,
+        tax_rate: String(editData.tax_rate || 0),
         payment_methods: editData.payment_methods || [],
         materials: [],
       });
     } else {
-      setForm({ name: '', contact: '', phone: '', category: '', tax_rate: 0, payment_methods: [], materials: [] });
+      setForm({ name: '', contact: '', phone: '', category: '', tax_rate: '0', payment_methods: [], materials: [] });
     }
   }, [editData, isOpen]);
 
@@ -68,14 +68,16 @@ function SupplierModal({ isOpen, onClose, onSave, materials, editData }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      const payload = { ...form, tax_rate: parseFloat(form.tax_rate) || 0 };
       if (editData?.id) {
-        await api.updateSupplier(editData.id, form);
+        await api.updateSupplier(editData.id, payload);
       } else {
-        const result = await api.createSupplier(form);
+        const result = await api.createSupplier(payload);
         // Add material prices for new supplier
         for (const mat of form.materials) {
-          if (mat.price > 0) {
-            await api.createPrice({ supplier_id: result.id, material_id: mat.id, price: mat.price });
+          const matPrice = parseFloat(mat.price) || 0;
+          if (matPrice > 0) {
+            await api.createPrice({ supplier_id: result.id, material_id: mat.id, price: matPrice });
           }
         }
       }
@@ -110,7 +112,7 @@ function SupplierModal({ isOpen, onClose, onSave, materials, editData }) {
           </div>
           <div className="form-group">
             <label>Impostos (%)</label>
-            <input className="input" type="number" step="0.01" value={form.tax_rate} onChange={(e) => setForm({ ...form, tax_rate: parseFloat(e.target.value) || 0 })} />
+            <input className="input" type="number" step="0.01" value={form.tax_rate} onChange={(e) => setForm({ ...form, tax_rate: e.target.value })} />
           </div>
         </div>
         <div className="form-group">
@@ -135,11 +137,12 @@ function SupplierModal({ isOpen, onClose, onSave, materials, editData }) {
               <div key={m.id} className="flex gap-2 items-center mt-2">
                 <span className="flex-1 text-sm">{m.name} ({m.unit})</span>
                 <input className="input" style={{ width: '120px' }} type="number" step="0.01" placeholder="Preço"
+                  value={form.materials.find(x => x.id === m.id)?.price || ''}
                   onChange={(e) => {
                     const newMats = [...form.materials];
                     const idx = newMats.findIndex((x) => x.id === m.id);
-                    if (idx >= 0) { newMats[idx].price = parseFloat(e.target.value) || 0; }
-                    else { newMats.push({ id: m.id, price: parseFloat(e.target.value) || 0 }); }
+                    if (idx >= 0) { newMats[idx].price = e.target.value; }
+                    else { newMats.push({ id: m.id, price: e.target.value }); }
                     setForm({ ...form, materials: newMats });
                   }} />
               </div>
@@ -156,7 +159,7 @@ function SupplierModal({ isOpen, onClose, onSave, materials, editData }) {
 
 /* ==================== LABOR MODAL ==================== */
 function LaborModal({ isOpen, onClose, onSave, editData }) {
-  const [form, setForm] = useState({ name: '', role: '', daily_rate: 0, phone: '', tax_rate: 0, payment_methods: [] });
+  const [form, setForm] = useState({ name: '', role: '', daily_rate: '0', phone: '', tax_rate: '0', payment_methods: [] });
   const [newMethod, setNewMethod] = useState('');
 
   useEffect(() => {
@@ -164,13 +167,13 @@ function LaborModal({ isOpen, onClose, onSave, editData }) {
       setForm({
         name: editData.name || '',
         role: editData.role || '',
-        daily_rate: editData.daily_rate || 0,
+        daily_rate: String(editData.daily_rate || 0),
         phone: editData.phone || '',
-        tax_rate: editData.tax_rate || 0,
+        tax_rate: String(editData.tax_rate || 0),
         payment_methods: editData.payment_methods || [],
       });
     } else {
-      setForm({ name: '', role: '', daily_rate: 0, phone: '', tax_rate: 0, payment_methods: [] });
+      setForm({ name: '', role: '', daily_rate: '0', phone: '', tax_rate: '0', payment_methods: [] });
     }
   }, [editData, isOpen]);
 
@@ -184,10 +187,15 @@ function LaborModal({ isOpen, onClose, onSave, editData }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      const payload = {
+        ...form,
+        daily_rate: parseFloat(form.daily_rate) || 0,
+        tax_rate: parseFloat(form.tax_rate) || 0
+      };
       if (editData?.id) {
-        await api.updateLabor(editData.id, form);
+        await api.updateLabor(editData.id, payload);
       } else {
-        await api.createLabor(form);
+        await api.createLabor(payload);
       }
       onSave();
       onClose();
@@ -210,7 +218,7 @@ function LaborModal({ isOpen, onClose, onSave, editData }) {
           </div>
           <div className="form-group">
             <label>Diária (R$)</label>
-            <input className="input" type="number" step="0.01" value={form.daily_rate} onChange={(e) => setForm({ ...form, daily_rate: parseFloat(e.target.value) || 0 })} />
+            <input className="input" type="number" step="0.01" value={form.daily_rate} onChange={(e) => setForm({ ...form, daily_rate: e.target.value })} />
           </div>
         </div>
         <div className="form-row">
@@ -220,7 +228,7 @@ function LaborModal({ isOpen, onClose, onSave, editData }) {
           </div>
           <div className="form-group">
             <label>Impostos (%)</label>
-            <input className="input" type="number" step="0.01" value={form.tax_rate} onChange={(e) => setForm({ ...form, tax_rate: parseFloat(e.target.value) || 0 })} />
+            <input className="input" type="number" step="0.01" value={form.tax_rate} onChange={(e) => setForm({ ...form, tax_rate: e.target.value })} />
           </div>
         </div>
         <div className="form-group">
