@@ -1,5 +1,7 @@
-import { supabase, createResponse, errorResponse } from '@/lib/server';
+import { db, createResponse, errorResponse } from '@/lib/server';
+import { transactions, suppliers, labor, works } from '@/lib/db/schema';
 import { transactionSchema } from '@/lib/schemas';
+import { desc, eq, gte, and } from 'drizzle-orm';
 
 function getDateFilter(filter: string | null): string | null {
   if (!filter) return null;
@@ -19,43 +21,46 @@ function getDateFilter(filter: string | null): string | null {
 
 export async function GET(request: Request) {
   try {
-    if (!supabase) return errorResponse('Supabase não configurado');
     const { searchParams } = new URL(request.url);
     const filter = searchParams.get('filter');
     const workId = searchParams.get('work_id');
 
-    let query = supabase
-      .from('transactions')
-      .select(`
-        *,
-        suppliers ( name ),
-        labor ( name ),
-        works ( name )
-      `)
-      .order('date', { ascending: false });
-
     const dateFrom = getDateFilter(filter);
+
+    const conditions = [];
     if (dateFrom) {
-      query = query.gte('date', dateFrom);
+      conditions.push(gte(transactions.date, dateFrom));
     }
     if (workId) {
-      query = query.eq('work_id', parseInt(workId, 10));
+      conditions.push(eq(transactions.workId, parseInt(workId, 10)));
     }
 
-    const { data, error } = await query;
-    if (error) throw error;
+    const query = db
+      .select({
+        id: transactions.id,
+        description: transactions.description,
+        amount: transactions.amount,
+        type: transactions.type,
+        category: transactions.category,
+        supplier_id: transactions.supplierId,
+        labor_id: transactions.laborId,
+        work_id: transactions.workId,
+        tax_amount: transactions.taxAmount,
+        date: transactions.date,
+        created_at: transactions.createdAt,
+        supplier_name: suppliers.name,
+        labor_name: labor.name,
+        work_name: works.name,
+      })
+      .from(transactions)
+      .leftJoin(suppliers, eq(transactions.supplierId, suppliers.id))
+      .leftJoin(labor, eq(transactions.laborId, labor.id))
+      .leftJoin(works, eq(transactions.workId, works.id))
+      .orderBy(desc(transactions.date));
 
-    const formatted = (data || []).map((t: any) => ({
-      ...t,
-      supplier_name: t.suppliers?.name || null,
-      labor_name: t.labor?.name || null,
-      work_name: t.works?.name || null,
-      suppliers: undefined,
-      labor: undefined,
-      works: undefined,
-    }));
+    const data = conditions.length ? await query.where(and(...conditions)) : await query;
 
-    return createResponse(formatted);
+    return createResponse(data);
   } catch (err: any) {
     return errorResponse(err.message);
   }
@@ -63,7 +68,6 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    if (!supabase) return errorResponse('Supabase não configurado');
     const body = await request.json();
 
     transactionSchema.parse({
@@ -76,24 +80,22 @@ export async function POST(request: Request) {
       workId: body.work_id ? parseInt(body.work_id) : null,
     });
 
-    const { data, error } = await supabase
-      .from('transactions')
-      .insert({
+    const [inserted] = await db
+      .insert(transactions)
+      .values({
         description: body.description,
         amount: body.amount,
         type: body.type || 'EXPENSE',
         category: body.category || null,
-        supplier_id: body.supplier_id || null,
-        labor_id: body.labor_id || null,
-        work_id: body.work_id || null,
-        tax_amount: body.tax_amount || 0,
+        supplierId: body.supplier_id ? parseInt(body.supplier_id) : null,
+        laborId: body.labor_id ? parseInt(body.labor_id) : null,
+        workId: body.work_id ? parseInt(body.work_id) : null,
+        taxAmount: body.tax_amount || 0,
         date: body.date || new Date().toISOString(),
       })
-      .select()
-      .single();
+      .returning();
 
-    if (error) throw error;
-    return createResponse({ id: data.id });
+    return createResponse({ id: inserted.id });
   } catch (err: any) {
     return errorResponse(err.message);
   }

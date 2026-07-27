@@ -1,4 +1,6 @@
-import { supabase, createResponse, errorResponse } from '@/lib/server';
+import { db, createResponse, errorResponse } from '@/lib/server';
+import { transactions, suppliers, labor, works } from '@/lib/db/schema';
+import { eq, gte, and } from 'drizzle-orm';
 
 function getDateFilter(filter: string | null): string | null {
   if (!filter) return null;
@@ -11,53 +13,61 @@ function getDateFilter(filter: string | null): string | null {
 
 export async function GET(request: Request) {
   try {
-    if (!supabase) return errorResponse('Supabase não configurado');
     const { searchParams } = new URL(request.url);
     const filter = searchParams.get('filter');
     const dateFrom = getDateFilter(filter);
 
-    let query = supabase.from('transactions').select(`
-      *, suppliers ( name ), labor ( name ), works ( name )
-    `).eq('type', 'EXPENSE');
+    const conditions = [eq(transactions.type, 'EXPENSE')];
+    if (dateFrom) {
+      conditions.push(gte(transactions.date, dateFrom));
+    }
 
-    if (dateFrom) query = query.gte('date', dateFrom);
+    const txList = await db
+      .select({
+        id: transactions.id,
+        amount: transactions.amount,
+        taxAmount: transactions.taxAmount,
+        category: transactions.category,
+        supplierName: suppliers.name,
+        laborName: labor.name,
+        workName: works.name,
+      })
+      .from(transactions)
+      .leftJoin(suppliers, eq(transactions.supplierId, suppliers.id))
+      .leftJoin(labor, eq(transactions.laborId, labor.id))
+      .leftJoin(works, eq(transactions.workId, works.id))
+      .where(and(...conditions));
 
-    const { data: transactions, error } = await query;
-    if (error) throw error;
-
-    const total = (transactions || []).reduce((s: number, t: any) => s + (t.amount || 0), 0);
-    const totalTax = (transactions || []).reduce((s: number, t: any) => s + (t.tax_amount || 0), 0);
+    const total = txList.reduce((s, t) => s + (t.amount || 0), 0);
+    const totalTax = txList.reduce((s, t) => s + (t.taxAmount || 0), 0);
 
     const catMap: Record<string, number> = {};
-    (transactions || []).forEach((t: any) => {
+    txList.forEach((t) => {
       const key = t.category || 'Sem categoria';
       catMap[key] = (catMap[key] || 0) + (t.amount || 0);
     });
     const byCategory = Object.entries(catMap).map(([category, total]) => ({ category, total }));
 
     const supMap: Record<string, number> = {};
-    (transactions || []).forEach((t: any) => {
-      if (t.suppliers?.name) {
-        const key = t.suppliers.name;
-        supMap[key] = (supMap[key] || 0) + (t.amount || 0);
+    txList.forEach((t) => {
+      if (t.supplierName) {
+        supMap[t.supplierName] = (supMap[t.supplierName] || 0) + (t.amount || 0);
       }
     });
     const bySupplier = Object.entries(supMap).map(([name, total]) => ({ name, total }));
 
     const labMap: Record<string, number> = {};
-    (transactions || []).forEach((t: any) => {
-      if (t.labor?.name) {
-        const key = t.labor.name;
-        labMap[key] = (labMap[key] || 0) + (t.amount || 0);
+    txList.forEach((t) => {
+      if (t.laborName) {
+        labMap[t.laborName] = (labMap[t.laborName] || 0) + (t.amount || 0);
       }
     });
     const byLabor = Object.entries(labMap).map(([name, total]) => ({ name, total }));
 
     const workMap: Record<string, number> = {};
-    (transactions || []).forEach((t: any) => {
-      if (t.works?.name) {
-        const key = t.works.name;
-        workMap[key] = (workMap[key] || 0) + (t.amount || 0);
+    txList.forEach((t) => {
+      if (t.workName) {
+        workMap[t.workName] = (workMap[t.workName] || 0) + (t.amount || 0);
       }
     });
     const byWork = Object.entries(workMap).map(([name, total]) => ({ name, total }));

@@ -1,29 +1,26 @@
-import { supabase, createResponse, errorResponse } from '@/lib/server';
-import type { Database } from '@/lib/database.types';
-
-type WorkRow = Database['public']['Tables']['works']['Row'] & {
-  total_cost?: number;
-};
+import { db, createResponse, errorResponse } from '@/lib/server';
+import { works, transactions } from '@/lib/db/schema';
+import { eq, and, sql } from 'drizzle-orm';
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    if (!supabase) return errorResponse('Supabase não configurado');
     const { id } = await params;
     const numId = parseInt(id, 10);
-    const { data: work, error } = await supabase.from('works').select('*').eq('id', numId).single();
-    if (error) throw error;
+
+    const [work] = await db.select().from(works).where(eq(works.id, numId));
     if (!work) return errorResponse('Work not found', 404);
 
-    const enriched: WorkRow = { ...work };
+    const [sumRes] = await db
+      .select({
+        totalCost: sql<number>`COALESCE(SUM(${transactions.amount}), 0)`,
+      })
+      .from(transactions)
+      .where(and(eq(transactions.workId, work.id), eq(transactions.type, 'EXPENSE')));
 
-    const { data: txData } = await supabase
-      .from('transactions')
-      .select('amount')
-      .eq('work_id', work.id)
-      .eq('type', 'EXPENSE');
-    enriched.total_cost = (txData || []).reduce((sum: number, t: any) => sum + (t.amount || 0), 0);
-
-    return createResponse(enriched);
+    return createResponse({
+      ...work,
+      total_cost: Number(sumRes?.totalCost || 0),
+    });
   } catch (err: any) {
     return errorResponse(err.message);
   }
@@ -31,23 +28,22 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 
 export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    if (!supabase) return errorResponse('Supabase não configurado');
     const { id } = await params;
     const numId = parseInt(id, 10);
     const body = await request.json();
-    const { error } = await supabase
-      .from('works')
-      .update({
+
+    await db
+      .update(works)
+      .set({
         name: body.name,
         address: body.address || null,
-        start_date: body.start_date || null,
-        end_date: body.end_date || null,
+        startDate: body.start_date || null,
+        endDate: body.end_date || null,
         budget: body.budget || 0,
         status: body.status || 'ACTIVE',
       })
-      .eq('id', numId);
+      .where(eq(works.id, numId));
 
-    if (error) throw error;
     return createResponse({ success: true });
   } catch (err: any) {
     return errorResponse(err.message);
@@ -56,12 +52,12 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
 
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    if (!supabase) return errorResponse('Supabase não configurado');
     const { id } = await params;
     const numId = parseInt(id, 10);
-    await supabase.from('transactions').update({ work_id: null }).eq('work_id', numId);
-    const { error } = await supabase.from('works').delete().eq('id', numId);
-    if (error) throw error;
+
+    await db.update(transactions).set({ workId: null }).where(eq(transactions.workId, numId));
+    await db.delete(works).where(eq(works.id, numId));
+
     return createResponse({ success: true });
   } catch (err: any) {
     return errorResponse(err.message);

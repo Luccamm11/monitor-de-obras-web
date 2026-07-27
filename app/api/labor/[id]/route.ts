@@ -1,24 +1,24 @@
-import { supabase, createResponse, errorResponse } from '@/lib/server';
+import { db, createResponse, errorResponse } from '@/lib/server';
+import { labor, paymentMethods } from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
 
 export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    if (!supabase) return errorResponse('Supabase não configurado');
     const { id } = await params;
     const numId = parseInt(id, 10);
     const body = await request.json();
     const { name, role, daily_rate, phone, tax_rate, payment_methods } = body;
 
-    const { error } = await supabase
-      .from('labor')
-      .update({ name, role, daily_rate, phone, tax_rate: tax_rate || 0 })
-      .eq('id', numId);
+    await db
+      .update(labor)
+      .set({ name, role, dailyRate: daily_rate, phone, taxRate: tax_rate || 0 })
+      .where(eq(labor.id, numId));
 
-    if (error) throw error;
+    await db.delete(paymentMethods).where(eq(paymentMethods.laborId, numId));
 
-    await supabase.from('payment_methods').delete().eq('labor_id', numId);
     if (payment_methods?.length) {
-      await supabase.from('payment_methods').insert(
-        payment_methods.map((method: string) => ({ labor_id: numId, method }))
+      await db.insert(paymentMethods).values(
+        payment_methods.map((method: string) => ({ laborId: numId, method }))
       );
     }
 
@@ -30,12 +30,12 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
 
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    if (!supabase) return errorResponse('Supabase não configurado');
     const { id } = await params;
     const numId = parseInt(id, 10);
-    await supabase.from('payment_methods').delete().eq('labor_id', numId);
-    const { error } = await supabase.from('labor').delete().eq('id', numId);
-    if (error) throw error;
+
+    await db.delete(paymentMethods).where(eq(paymentMethods.laborId, numId));
+    await db.delete(labor).where(eq(labor.id, numId));
+
     return createResponse({ success: true });
   } catch (err: any) {
     return errorResponse(err.message);

@@ -1,14 +1,11 @@
-import { supabase, createResponse, errorResponse } from '@/lib/server';
+import { db, createResponse, errorResponse } from '@/lib/server';
+import { materials } from '@/lib/db/schema';
 import { materialSchema } from '@/lib/schemas';
+import { asc } from 'drizzle-orm';
 
 export async function GET() {
   try {
-    if (!supabase) return errorResponse('Supabase não configurado');
-    const { data, error } = await supabase
-      .from('materials')
-      .select('*')
-      .order('name');
-    if (error) throw error;
+    const data = await db.select().from(materials).orderBy(asc(materials.name));
     return createResponse(data);
   } catch (err: any) {
     return errorResponse(err.message);
@@ -17,17 +14,15 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    if (!supabase) return errorResponse('Supabase não configurado');
     const body = await request.json();
     materialSchema.parse({ name: body.name, unit: body.unit, category: body.category });
 
-    const { data, error } = await supabase
-      .from('materials')
-      .insert({ name: body.name, unit: body.unit, category: body.category })
-      .select()
-      .single();
-    if (error) throw error;
-    return createResponse({ id: data.id });
+    const [inserted] = await db
+      .insert(materials)
+      .values({ name: body.name, unit: body.unit, category: body.category })
+      .returning();
+
+    return createResponse({ id: inserted.id });
   } catch (err: any) {
     return errorResponse(err.message);
   }

@@ -1,39 +1,33 @@
-import { supabase, createResponse, errorResponse } from '@/lib/server';
+import { db, createResponse, errorResponse } from '@/lib/server';
+import { supplierMaterialPrices, suppliers, materials } from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
 
 export async function GET(request: Request) {
   try {
-    if (!supabase) return errorResponse('Supabase não configurado');
     const { searchParams } = new URL(request.url);
     const materialId = searchParams.get('material_id');
 
-    let query = supabase
-      .from('supplier_material_prices')
-      .select(`
-        *,
-        suppliers ( name, tax_rate ),
-        materials ( name, unit )
-      `);
+    const query = db
+      .select({
+        id: supplierMaterialPrices.id,
+        supplier_id: supplierMaterialPrices.supplierId,
+        material_id: supplierMaterialPrices.materialId,
+        price: supplierMaterialPrices.price,
+        supplier_name: suppliers.name,
+        tax_rate: suppliers.taxRate,
+        material_name: materials.name,
+        unit: materials.unit,
+        last_updated: supplierMaterialPrices.lastUpdated,
+      })
+      .from(supplierMaterialPrices)
+      .leftJoin(suppliers, eq(supplierMaterialPrices.supplierId, suppliers.id))
+      .leftJoin(materials, eq(supplierMaterialPrices.materialId, materials.id));
 
-    if (materialId) {
-      query = query.eq('material_id', parseInt(materialId, 10));
-    }
+    const data = materialId
+      ? await query.where(eq(supplierMaterialPrices.materialId, parseInt(materialId, 10)))
+      : await query;
 
-    const { data, error } = await query;
-    if (error) throw error;
-
-    const formatted = (data || []).map((p: any) => ({
-      id: p.id,
-      supplier_id: p.supplier_id,
-      material_id: p.material_id,
-      price: p.price,
-      supplier_name: p.suppliers?.name,
-      tax_rate: p.suppliers?.tax_rate || 0,
-      material_name: p.materials?.name,
-      unit: p.materials?.unit,
-      last_updated: p.last_updated,
-    }));
-
-    return createResponse(formatted);
+    return createResponse(data);
   } catch (err: any) {
     return errorResponse(err.message);
   }
@@ -41,21 +35,27 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    if (!supabase) return errorResponse('Supabase não configurado');
     const body = await request.json();
     const { supplier_id, material_id, price } = body;
 
-    const { data, error } = await supabase
-      .from('supplier_material_prices')
-      .upsert(
-        { supplier_id, material_id, price, last_updated: new Date().toISOString() },
-        { onConflict: 'supplier_id,material_id' }
-      )
-      .select()
-      .single();
+    const [inserted] = await db
+      .insert(supplierMaterialPrices)
+      .values({
+        supplierId: parseInt(supplier_id, 10),
+        materialId: parseInt(material_id, 10),
+        price: parseFloat(price) || 0,
+        lastUpdated: new Date().toISOString(),
+      })
+      .onConflictDoUpdate({
+        target: [supplierMaterialPrices.supplierId, supplierMaterialPrices.materialId],
+        set: {
+          price: parseFloat(price) || 0,
+          lastUpdated: new Date().toISOString(),
+        },
+      })
+      .returning();
 
-    if (error) throw error;
-    return createResponse({ id: data.id });
+    return createResponse({ id: inserted.id });
   } catch (err: any) {
     return errorResponse(err.message);
   }

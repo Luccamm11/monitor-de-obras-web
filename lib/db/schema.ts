@@ -16,7 +16,7 @@ export const suppliers = pgTable("suppliers", {
   phone: text("phone"),
   category: text("category"),
   taxRate: real("tax_rate").default(0),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).defaultNow(),
 });
 
 // Materiais
@@ -25,7 +25,7 @@ export const materials = pgTable("materials", {
   name: text("name").notNull(),
   unit: text("unit").notNull().default("un"),
   category: text("category"),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).defaultNow(),
 });
 
 // Mão de Obra
@@ -36,7 +36,7 @@ export const labor = pgTable("labor", {
   dailyRate: real("daily_rate").default(0),
   phone: text("phone"),
   taxRate: real("tax_rate").default(0),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).defaultNow(),
 });
 
 // Formas de Pagamento
@@ -59,7 +59,7 @@ export const supplierMaterialPrices = pgTable(
       .notNull()
       .references(() => materials.id, { onDelete: "cascade" }),
     price: real("price").notNull(),
-    lastUpdated: timestamp("last_updated", { withTimezone: true }).defaultNow(),
+    lastUpdated: timestamp("last_updated", { withTimezone: true, mode: "string" }).defaultNow(),
   },
   (table) => [
     unique("supplier_material_prices_supplier_id_material_id_key").on(
@@ -74,17 +74,17 @@ export const works = pgTable("works", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   address: text("address"),
-  startDate: timestamp("start_date", { withTimezone: true }),
-  endDate: timestamp("end_date", { withTimezone: true }),
+  startDate: timestamp("start_date", { withTimezone: true, mode: "string" }),
+  endDate: timestamp("end_date", { withTimezone: true, mode: "string" }),
   status: text("status").default("ACTIVE"),
   budget: real("budget").default(0),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).defaultNow(),
 });
 
 // Transações
 export const transactions = pgTable("transactions", {
   id: serial("id").primaryKey(),
-  date: timestamp("date", { withTimezone: true }).defaultNow(),
+  date: timestamp("date", { withTimezone: true, mode: "string" }).defaultNow(),
   description: text("description").notNull(),
   amount: real("amount").notNull(),
   type: text("type").notNull().default("EXPENSE"),
@@ -93,5 +93,5 @@ export const transactions = pgTable("transactions", {
   laborId: integer("labor_id").references(() => labor.id, { onDelete: "set null" }),
   workId: integer("work_id").references(() => works.id, { onDelete: "set null" }),
   taxAmount: real("tax_amount").default(0),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).defaultNow(),
 });

@@ -1,4 +1,6 @@
-import { supabase, errorResponse } from '@/lib/server';
+import { db, errorResponse } from '@/lib/server';
+import { transactions, suppliers, labor, works } from '@/lib/db/schema';
+import { desc, eq, gte, and } from 'drizzle-orm';
 
 function getDateFilter(filter: string | null): string | null {
   if (!filter) return null;
@@ -11,31 +13,44 @@ function getDateFilter(filter: string | null): string | null {
 
 export async function GET(request: Request) {
   try {
-    if (!supabase) return errorResponse('Supabase não configurado');
     const { searchParams } = new URL(request.url);
     const filter = searchParams.get('filter');
     const dateFrom = getDateFilter(filter);
 
-    let query = supabase.from('transactions').select(`
-      *, suppliers ( name ), labor ( name ), works ( name )
-    `).eq('type', 'EXPENSE').order('date', { ascending: false });
+    const conditions = [eq(transactions.type, 'EXPENSE')];
+    if (dateFrom) {
+      conditions.push(gte(transactions.date, dateFrom));
+    }
 
-    if (dateFrom) query = query.gte('date', dateFrom);
-
-    const { data: transactions, error } = await query;
-    if (error) throw error;
+    const txList = await db
+      .select({
+        date: transactions.date,
+        description: transactions.description,
+        amount: transactions.amount,
+        category: transactions.category,
+        taxAmount: transactions.taxAmount,
+        supplierName: suppliers.name,
+        laborName: labor.name,
+        workName: works.name,
+      })
+      .from(transactions)
+      .leftJoin(suppliers, eq(transactions.supplierId, suppliers.id))
+      .leftJoin(labor, eq(transactions.laborId, labor.id))
+      .leftJoin(works, eq(transactions.workId, works.id))
+      .where(and(...conditions))
+      .orderBy(desc(transactions.date));
 
     let csv = 'Data,Descrição,Valor,Categoria,Impostos,Fornecedor,Mão de Obra,Obra\n';
-    (transactions || []).forEach((t: any) => {
+    txList.forEach((t) => {
       const row = [
         t.date || '',
         (t.description || '').replace(/,/g, ';'),
         t.amount || 0,
         (t.category || '').replace(/,/g, ';'),
-        t.tax_amount || 0,
-        (t.suppliers?.name || '').replace(/,/g, ';'),
-        (t.labor?.name || '').replace(/,/g, ';'),
-        (t.works?.name || '').replace(/,/g, ';'),
+        t.taxAmount || 0,
+        (t.supplierName || '').replace(/,/g, ';'),
+        (t.laborName || '').replace(/,/g, ';'),
+        (t.workName || '').replace(/,/g, ';'),
       ];
       csv += row.join(',') + '\n';
     });

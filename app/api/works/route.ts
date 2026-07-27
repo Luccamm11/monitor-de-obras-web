@@ -1,31 +1,27 @@
-import { supabase, createResponse, errorResponse } from '@/lib/server';
+import { db, createResponse, errorResponse } from '@/lib/server';
+import { works, transactions } from '@/lib/db/schema';
 import { workSchema } from '@/lib/schemas';
-import type { Database } from '@/lib/database.types';
-
-type WorkRow = Database['public']['Tables']['works']['Row'] & {
-  total_cost?: number;
-};
+import { desc, eq, and, sql } from 'drizzle-orm';
 
 export async function GET() {
   try {
-    if (!supabase) return errorResponse('Supabase não configurado');
-    const { data: works, error } = await supabase
-      .from('works')
-      .select('*')
-      .order('created_at', { ascending: false });
+    const list = await db.select().from(works).orderBy(desc(works.createdAt));
 
-    if (error) throw error;
+    const result = await Promise.all(
+      list.map(async (w) => {
+        const [sumRes] = await db
+          .select({
+            totalCost: sql<number>`COALESCE(SUM(${transactions.amount}), 0)`,
+          })
+          .from(transactions)
+          .where(and(eq(transactions.workId, w.id), eq(transactions.type, 'EXPENSE')));
 
-    const result: WorkRow[] = works as WorkRow[];
-
-    for (const work of result) {
-      const { data: txData } = await supabase
-        .from('transactions')
-        .select('amount')
-        .eq('work_id', work.id)
-        .eq('type', 'EXPENSE');
-      work.total_cost = (txData || []).reduce((sum: number, t: any) => sum + (t.amount || 0), 0);
-    }
+        return {
+          ...w,
+          total_cost: Number(sumRes?.totalCost || 0),
+        };
+      })
+    );
 
     return createResponse(result);
   } catch (err: any) {
@@ -35,25 +31,22 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    if (!supabase) return errorResponse('Supabase não configurado');
     const body = await request.json();
     workSchema.parse({ name: body.name, address: body.address, status: body.status, budget: parseFloat(body.budget) || 0 });
 
-    const { data, error } = await supabase
-      .from('works')
-      .insert({
+    const [inserted] = await db
+      .insert(works)
+      .values({
         name: body.name,
         address: body.address || null,
-        start_date: body.start_date || null,
-        end_date: body.end_date || null,
+        startDate: body.start_date || null,
+        endDate: body.end_date || null,
         budget: body.budget || 0,
         status: body.status || 'ACTIVE',
       })
-      .select()
-      .single();
+      .returning();
 
-    if (error) throw error;
-    return createResponse({ id: data.id });
+    return createResponse({ id: inserted.id });
   } catch (err: any) {
     return errorResponse(err.message);
   }

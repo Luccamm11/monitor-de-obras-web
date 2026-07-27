@@ -1,24 +1,24 @@
-import { supabase, createResponse, errorResponse } from '@/lib/server';
+import { db, createResponse, errorResponse } from '@/lib/server';
+import { suppliers, paymentMethods, supplierMaterialPrices } from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
 
 export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    if (!supabase) return errorResponse('Supabase não configurado');
     const { id } = await params;
     const numId = parseInt(id, 10);
     const body = await request.json();
     const { name, contact, phone, category, tax_rate, payment_methods } = body;
 
-    const { error } = await supabase
-      .from('suppliers')
-      .update({ name, contact, phone, category, tax_rate: tax_rate || 0 })
-      .eq('id', numId);
+    await db
+      .update(suppliers)
+      .set({ name, contact, phone, category, taxRate: tax_rate || 0 })
+      .where(eq(suppliers.id, numId));
 
-    if (error) throw error;
+    await db.delete(paymentMethods).where(eq(paymentMethods.supplierId, numId));
 
-    await supabase.from('payment_methods').delete().eq('supplier_id', numId);
     if (payment_methods?.length) {
-      await supabase.from('payment_methods').insert(
-        payment_methods.map((method: string) => ({ supplier_id: numId, method }))
+      await db.insert(paymentMethods).values(
+        payment_methods.map((method: string) => ({ supplierId: numId, method }))
       );
     }
 
@@ -30,13 +30,13 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
 
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    if (!supabase) return errorResponse('Supabase não configurado');
     const { id } = await params;
     const numId = parseInt(id, 10);
-    await supabase.from('payment_methods').delete().eq('supplier_id', numId);
-    await supabase.from('supplier_material_prices').delete().eq('supplier_id', numId);
-    const { error } = await supabase.from('suppliers').delete().eq('id', numId);
-    if (error) throw error;
+
+    await db.delete(paymentMethods).where(eq(paymentMethods.supplierId, numId));
+    await db.delete(supplierMaterialPrices).where(eq(supplierMaterialPrices.supplierId, numId));
+    await db.delete(suppliers).where(eq(suppliers.id, numId));
+
     return createResponse({ success: true });
   } catch (err: any) {
     return errorResponse(err.message);
