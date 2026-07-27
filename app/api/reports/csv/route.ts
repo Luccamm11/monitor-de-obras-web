@@ -1,12 +1,23 @@
 import { db, errorResponse } from '@/lib/server';
 import { transactions, suppliers, labor, works } from '@/lib/db/schema';
-import { desc, eq, gte, and } from 'drizzle-orm';
+import { type SQL, desc, eq, gte, and } from 'drizzle-orm';
 
-function getDateFilter(filter: string | null): string | null {
-  if (!filter) return null;
+type CsvRow = {
+  date: string | null;
+  description: string;
+  amount: number;
+  category: string | null;
+  taxAmount: number | null;
+  supplierName: string | null;
+  laborName: string | null;
+  workName: string | null;
+};
+
+function getDateFilter(periodFilter: string | null): string | null {
+  if (!periodFilter) return null;
   const now = new Date();
-  const map: Record<string, number> = { '24h': 1, '7d': 7, '30d': 30, '90d': 90, 'year': 365 };
-  const days = map[filter];
+  const periodMap: Record<string, number> = { '24h': 1, '7d': 7, '30d': 30, '90d': 90, 'year': 365 };
+  const days = periodMap[periodFilter];
   if (!days) return null;
   return new Date(now.getTime() - days * 24 * 60 * 60 * 1000).toISOString();
 }
@@ -14,15 +25,13 @@ function getDateFilter(filter: string | null): string | null {
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const filter = searchParams.get('filter');
-    const dateFrom = getDateFilter(filter);
+    const periodFilter = searchParams.get('filter');
+    const dateFrom = getDateFilter(periodFilter);
 
-    const conditions = [eq(transactions.type, 'EXPENSE')];
-    if (dateFrom) {
-      conditions.push(gte(transactions.date, dateFrom));
-    }
+    const clauses: SQL<unknown>[] = [eq(transactions.type, 'EXPENSE')];
+    if (dateFrom) clauses.push(gte(transactions.date, dateFrom));
 
-    const txList = await db
+    const csvRows: CsvRow[] = await db
       .select({
         date: transactions.date,
         description: transactions.description,
@@ -37,22 +46,22 @@ export async function GET(request: Request) {
       .leftJoin(suppliers, eq(transactions.supplierId, suppliers.id))
       .leftJoin(labor, eq(transactions.laborId, labor.id))
       .leftJoin(works, eq(transactions.workId, works.id))
-      .where(and(...conditions))
+      .where(and(...clauses))
       .orderBy(desc(transactions.date));
 
     let csv = 'Data,Descrição,Valor,Categoria,Impostos,Fornecedor,Mão de Obra,Obra\n';
-    txList.forEach((t) => {
-      const row = [
-        t.date || '',
-        (t.description || '').replace(/,/g, ';'),
-        t.amount || 0,
-        (t.category || '').replace(/,/g, ';'),
-        t.taxAmount || 0,
-        (t.supplierName || '').replace(/,/g, ';'),
-        (t.laborName || '').replace(/,/g, ';'),
-        (t.workName || '').replace(/,/g, ';'),
+    csvRows.forEach((row) => {
+      const line = [
+        row.date || '',
+        (row.description || '').replace(/,/g, ';'),
+        row.amount || 0,
+        (row.category || '').replace(/,/g, ';'),
+        row.taxAmount || 0,
+        (row.supplierName || '').replace(/,/g, ';'),
+        (row.laborName || '').replace(/,/g, ';'),
+        (row.workName || '').replace(/,/g, ';'),
       ];
-      csv += row.join(',') + '\n';
+      csv += line.join(',') + '\n';
     });
 
     return new Response(csv, {

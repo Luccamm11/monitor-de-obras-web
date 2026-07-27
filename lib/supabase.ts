@@ -1,5 +1,4 @@
 import { createClient } from '@supabase/supabase-js';
-import type { Database } from './database.types';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
@@ -9,7 +8,7 @@ if (typeof window === 'undefined' && (!supabaseUrl || !supabaseAnonKey)) {
 }
 
 export const supabase = (supabaseUrl && supabaseAnonKey)
-  ? createClient<Database>(supabaseUrl, supabaseAnonKey)
+  ? createClient(supabaseUrl, supabaseAnonKey)
   : null;
 
 export const isSupabaseConfigured = (): boolean => !!supabase;

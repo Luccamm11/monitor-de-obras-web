@@ -1,28 +1,48 @@
 import { db, createResponse, errorResponse } from '@/lib/server';
 import { transactions, suppliers, labor, works } from '@/lib/db/schema';
-import { eq, gte, and } from 'drizzle-orm';
+import { type SQL, eq, gte, and } from 'drizzle-orm';
 
-function getDateFilter(filter: string | null): string | null {
-  if (!filter) return null;
+type ReportTx = {
+  id: number;
+  amount: number;
+  taxAmount: number | null;
+  category: string | null;
+  supplierName: string | null;
+  laborName: string | null;
+  workName: string | null;
+};
+
+type AggregatedEntry = { category: string; total: number };
+type NamedEntry = { name: string; total: number };
+
+function getDateFilter(periodFilter: string | null): string | null {
+  if (!periodFilter) return null;
   const now = new Date();
-  const map: Record<string, number> = { '24h': 1, '7d': 7, '30d': 30, '90d': 90, 'year': 365 };
-  const days = map[filter];
+  const periodMap: Record<string, number> = { '24h': 1, '7d': 7, '30d': 30, '90d': 90, 'year': 365 };
+  const days = periodMap[periodFilter];
   if (!days) return null;
   return new Date(now.getTime() - days * 24 * 60 * 60 * 1000).toISOString();
+}
+
+function aggregateByKey(rows: ReportTx[], key: keyof ReportTx): NamedEntry[] {
+  const acc: Record<string, number> = {};
+  rows.forEach((row) => {
+    const k = (row[key] as string | null);
+    if (k) acc[k] = (acc[k] || 0) + (row.amount || 0);
+  });
+  return Object.entries(acc).map(([name, total]) => ({ name, total }));
 }
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const filter = searchParams.get('filter');
-    const dateFrom = getDateFilter(filter);
+    const periodFilter = searchParams.get('filter');
+    const dateFrom = getDateFilter(periodFilter);
 
-    const conditions = [eq(transactions.type, 'EXPENSE')];
-    if (dateFrom) {
-      conditions.push(gte(transactions.date, dateFrom));
-    }
+    const clauses: SQL<unknown>[] = [eq(transactions.type, 'EXPENSE')];
+    if (dateFrom) clauses.push(gte(transactions.date, dateFrom));
 
-    const txList = await db
+    const reportTxs: ReportTx[] = await db
       .select({
         id: transactions.id,
         amount: transactions.amount,
@@ -36,43 +56,23 @@ export async function GET(request: Request) {
       .leftJoin(suppliers, eq(transactions.supplierId, suppliers.id))
       .leftJoin(labor, eq(transactions.laborId, labor.id))
       .leftJoin(works, eq(transactions.workId, works.id))
-      .where(and(...conditions));
+      .where(and(...clauses));
 
-    const total = txList.reduce((s, t) => s + (t.amount || 0), 0);
-    const totalTax = txList.reduce((s, t) => s + (t.taxAmount || 0), 0);
+    const totalExpenses = reportTxs.reduce((sum, tx) => sum + (tx.amount || 0), 0);
+    const totalTaxes = reportTxs.reduce((sum, tx) => sum + (tx.taxAmount || 0), 0);
 
     const catMap: Record<string, number> = {};
-    txList.forEach((t) => {
-      const key = t.category || 'Sem categoria';
-      catMap[key] = (catMap[key] || 0) + (t.amount || 0);
+    reportTxs.forEach((tx) => {
+      const catKey = tx.category || 'Sem categoria';
+      catMap[catKey] = (catMap[catKey] || 0) + (tx.amount || 0);
     });
-    const byCategory = Object.entries(catMap).map(([category, total]) => ({ category, total }));
+    const byCategory: AggregatedEntry[] = Object.entries(catMap).map(([category, total]) => ({ category, total }));
 
-    const supMap: Record<string, number> = {};
-    txList.forEach((t) => {
-      if (t.supplierName) {
-        supMap[t.supplierName] = (supMap[t.supplierName] || 0) + (t.amount || 0);
-      }
-    });
-    const bySupplier = Object.entries(supMap).map(([name, total]) => ({ name, total }));
+    const bySupplier: NamedEntry[] = aggregateByKey(reportTxs, 'supplierName');
+    const byLabor: NamedEntry[] = aggregateByKey(reportTxs, 'laborName');
+    const byWork: NamedEntry[] = aggregateByKey(reportTxs, 'workName');
 
-    const labMap: Record<string, number> = {};
-    txList.forEach((t) => {
-      if (t.laborName) {
-        labMap[t.laborName] = (labMap[t.laborName] || 0) + (t.amount || 0);
-      }
-    });
-    const byLabor = Object.entries(labMap).map(([name, total]) => ({ name, total }));
-
-    const workMap: Record<string, number> = {};
-    txList.forEach((t) => {
-      if (t.workName) {
-        workMap[t.workName] = (workMap[t.workName] || 0) + (t.amount || 0);
-      }
-    });
-    const byWork = Object.entries(workMap).map(([name, total]) => ({ name, total }));
-
-    return createResponse({ total, totalTax, byCategory, bySupplier, byLabor, byWork });
+    return createResponse({ total: totalExpenses, totalTax: totalTaxes, byCategory, bySupplier, byLabor, byWork });
   } catch (err: any) {
     return errorResponse(err.message);
   }
