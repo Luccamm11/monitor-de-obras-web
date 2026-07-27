@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, FormEvent, ReactNode } from 'react';
+import React, { useState, useEffect, useCallback, FormEvent, MouseEvent, KeyboardEvent, ChangeEvent, ReactNode } from 'react';
 import { api, formatCurrency } from '@/lib/api';
 
 /* ==================== MODAL ==================== */
@@ -18,7 +18,7 @@ function Modal({
   if (!isOpen) return null;
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+      <div className="modal-content" onClick={(clickEvent: MouseEvent<HTMLDivElement>) => clickEvent.stopPropagation()}>
         <div className="modal-header">
           <h3>{title}</h3>
           <button className="modal-close" onClick={onClose}>×</button>
@@ -46,7 +46,7 @@ function ConfirmDialog({
   if (!isOpen) return null;
   return (
     <div className="confirm-overlay" onClick={onCancel}>
-      <div className="confirm-card" onClick={(e) => e.stopPropagation()}>
+      <div className="confirm-card" onClick={(clickEvent: MouseEvent<HTMLDivElement>) => clickEvent.stopPropagation()}>
         <div className="confirm-icon">⚠️</div>
         <h3 className="confirm-title">{title || 'Confirmar Exclusão'}</h3>
         <p className="confirm-text">{message || 'Esta ação não pode ser desfeita. Deseja continuar?'}</p>
@@ -107,8 +107,8 @@ function SupplierModal({
     }
   };
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (formSubmitEvent: FormEvent) => {
+    formSubmitEvent.preventDefault();
     try {
       const payload = { ...form, tax_rate: parseFloat(form.tax_rate) || 0 };
       if (editData?.id) {
@@ -134,39 +134,39 @@ function SupplierModal({
       <form onSubmit={handleSubmit}>
         <div className="form-group">
           <label>Nome *</label>
-          <input className="input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+          <input className="input" value={form.name} onChange={(inputChangeEvent: ChangeEvent<HTMLInputElement>) => setForm({ ...form, name: inputChangeEvent.target.value })} required />
         </div>
         <div className="form-row">
           <div className="form-group">
             <label>Contato</label>
-            <input className="input" value={form.contact} onChange={(e) => setForm({ ...form, contact: e.target.value })} />
+            <input className="input" value={form.contact} onChange={(inputChangeEvent: ChangeEvent<HTMLInputElement>) => setForm({ ...form, contact: inputChangeEvent.target.value })} />
           </div>
           <div className="form-group">
             <label>Telefone</label>
-            <input className="input" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+            <input className="input" value={form.phone} onChange={(inputChangeEvent: ChangeEvent<HTMLInputElement>) => setForm({ ...form, phone: inputChangeEvent.target.value })} />
           </div>
         </div>
         <div className="form-row">
           <div className="form-group">
             <label>Categoria</label>
-            <input className="input" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} placeholder="Ex: Materiais" />
+            <input className="input" value={form.category} onChange={(inputChangeEvent: ChangeEvent<HTMLInputElement>) => setForm({ ...form, category: inputChangeEvent.target.value })} placeholder="Ex: Materiais" />
           </div>
           <div className="form-group">
             <label>Impostos (%)</label>
-            <input className="input" type="number" step="0.01" value={form.tax_rate} onChange={(e) => setForm({ ...form, tax_rate: e.target.value })} />
+            <input className="input" type="number" step="0.01" value={form.tax_rate} onChange={(inputChangeEvent: ChangeEvent<HTMLInputElement>) => setForm({ ...form, tax_rate: inputChangeEvent.target.value })} />
           </div>
         </div>
         <div className="form-group">
           <label>Formas de Pagamento</label>
           <div className="flex gap-2">
-            <input className="input" value={newMethod} onChange={(e) => setNewMethod(e.target.value)} placeholder="PIX, Cartão, Boleto..."
-              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addPaymentMethod(); } }} />
+            <input className="input" value={newMethod} onChange={(inputChangeEvent: ChangeEvent<HTMLInputElement>) => setNewMethod(inputChangeEvent.target.value)} placeholder="PIX, Cartão, Boleto..."
+              onKeyDown={(keyboardEvent: KeyboardEvent<HTMLInputElement>) => { if (keyboardEvent.key === 'Enter') { keyboardEvent.preventDefault(); addPaymentMethod(); } }} />
             <button type="button" className="btn btn-secondary" onClick={addPaymentMethod}>+</button>
           </div>
           <div className="tags mt-2">
-            {form.payment_methods.map((m, i) => (
-              <span key={i} className="tag">{m}
-                <span className="tag-remove" onClick={() => setForm({ ...form, payment_methods: form.payment_methods.filter((_, j) => j !== i) })}>×</span>
+            {form.payment_methods.map((paymentMethodName, itemIndex) => (
+              <span key={itemIndex} className="tag">{paymentMethodName}
+                <span className="tag-remove" onClick={() => setForm({ ...form, payment_methods: form.payment_methods.filter((_, filterIndex) => filterIndex !== itemIndex) })}>×</span>
               </span>
             ))}
           </div>
@@ -174,17 +174,17 @@ function SupplierModal({
         {!editData && materials.length > 0 && (
           <div className="form-group">
             <label>Preços por Material</label>
-            {materials.map((m) => (
-              <div key={m.id} className="flex gap-2 items-center mt-2">
-                <span className="flex-1 text-sm">{m.name} ({m.unit})</span>
+            {materials.map((materialItem) => (
+              <div key={materialItem.id} className="flex gap-2 items-center mt-2">
+                <span className="flex-1 text-sm">{materialItem.name} ({materialItem.unit})</span>
                 <input className="input" style={{ width: '120px' }} type="number" step="0.01" placeholder="Preço"
-                  value={form.materials.find(x => x.id === m.id)?.price || ''}
-                  onChange={(e) => {
-                    const newMats = [...form.materials];
-                    const idx = newMats.findIndex((x) => x.id === m.id);
-                    if (idx >= 0) { newMats[idx].price = e.target.value; }
-                    else { newMats.push({ id: m.id, price: e.target.value }); }
-                    setForm({ ...form, materials: newMats });
+                  value={form.materials.find((x) => x.id === materialItem.id)?.price || ''}
+                  onChange={(inputChangeEvent: ChangeEvent<HTMLInputElement>) => {
+                    const updatedMaterials = [...form.materials];
+                    const existingIndex = updatedMaterials.findIndex((x) => x.id === materialItem.id);
+                    if (existingIndex >= 0) { updatedMaterials[existingIndex].price = inputChangeEvent.target.value; }
+                    else { updatedMaterials.push({ id: materialItem.id, price: inputChangeEvent.target.value }); }
+                    setForm({ ...form, materials: updatedMaterials });
                   }} />
               </div>
             ))}
@@ -235,8 +235,8 @@ function LaborModal({
     }
   };
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (formSubmitEvent: FormEvent) => {
+    formSubmitEvent.preventDefault();
     try {
       const payload = {
         ...form,
@@ -260,39 +260,39 @@ function LaborModal({
       <form onSubmit={handleSubmit}>
         <div className="form-group">
           <label>Nome *</label>
-          <input className="input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+          <input className="input" value={form.name} onChange={(inputChangeEvent: ChangeEvent<HTMLInputElement>) => setForm({ ...form, name: inputChangeEvent.target.value })} required />
         </div>
         <div className="form-row">
           <div className="form-group">
             <label>Função</label>
-            <input className="input" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} placeholder="Ex: Pedreiro" />
+            <input className="input" value={form.role} onChange={(inputChangeEvent: ChangeEvent<HTMLInputElement>) => setForm({ ...form, role: inputChangeEvent.target.value })} placeholder="Ex: Pedreiro" />
           </div>
           <div className="form-group">
             <label>Diária (R$)</label>
-            <input className="input" type="number" step="0.01" value={form.daily_rate} onChange={(e) => setForm({ ...form, daily_rate: e.target.value })} />
+            <input className="input" type="number" step="0.01" value={form.daily_rate} onChange={(inputChangeEvent: ChangeEvent<HTMLInputElement>) => setForm({ ...form, daily_rate: inputChangeEvent.target.value })} />
           </div>
         </div>
         <div className="form-row">
           <div className="form-group">
             <label>Telefone</label>
-            <input className="input" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+            <input className="input" value={form.phone} onChange={(inputChangeEvent: ChangeEvent<HTMLInputElement>) => setForm({ ...form, phone: inputChangeEvent.target.value })} />
           </div>
           <div className="form-group">
             <label>Impostos (%)</label>
-            <input className="input" type="number" step="0.01" value={form.tax_rate} onChange={(e) => setForm({ ...form, tax_rate: e.target.value })} />
+            <input className="input" type="number" step="0.01" value={form.tax_rate} onChange={(inputChangeEvent: ChangeEvent<HTMLInputElement>) => setForm({ ...form, tax_rate: inputChangeEvent.target.value })} />
           </div>
         </div>
         <div className="form-group">
           <label>Formas de Pagamento</label>
           <div className="flex gap-2">
-            <input className="input" value={newMethod} onChange={(e) => setNewMethod(e.target.value)} placeholder="PIX, Dinheiro..."
-              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addPaymentMethod(); } }} />
+            <input className="input" value={newMethod} onChange={(inputChangeEvent: ChangeEvent<HTMLInputElement>) => setNewMethod(inputChangeEvent.target.value)} placeholder="PIX, Dinheiro..."
+              onKeyDown={(keyboardEvent: KeyboardEvent<HTMLInputElement>) => { if (keyboardEvent.key === 'Enter') { keyboardEvent.preventDefault(); addPaymentMethod(); } }} />
             <button type="button" className="btn btn-secondary" onClick={addPaymentMethod}>+</button>
           </div>
           <div className="tags mt-2">
-            {form.payment_methods.map((m, i) => (
-              <span key={i} className="tag">{m}
-                <span className="tag-remove" onClick={() => setForm({ ...form, payment_methods: form.payment_methods.filter((_, j) => j !== i) })}>×</span>
+            {form.payment_methods.map((paymentMethodName, itemIndex) => (
+              <span key={itemIndex} className="tag">{paymentMethodName}
+                <span className="tag-remove" onClick={() => setForm({ ...form, payment_methods: form.payment_methods.filter((_, filterIndex) => filterIndex !== itemIndex) })}>×</span>
               </span>
             ))}
           </div>
@@ -327,8 +327,8 @@ function MaterialModal({
     }
   }, [editData, isOpen]);
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (formSubmitEvent: FormEvent) => {
+    formSubmitEvent.preventDefault();
     try {
       if (editData?.id) {
         await api.updateMaterial(editData.id, form);
@@ -347,12 +347,12 @@ function MaterialModal({
       <form onSubmit={handleSubmit}>
         <div className="form-group">
           <label>Nome *</label>
-          <input className="input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+          <input className="input" value={form.name} onChange={(inputChangeEvent: ChangeEvent<HTMLInputElement>) => setForm({ ...form, name: inputChangeEvent.target.value })} required />
         </div>
         <div className="form-row">
           <div className="form-group">
             <label>Unidade</label>
-            <select className="input" value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })}>
+            <select className="input" value={form.unit} onChange={(selectChangeEvent: ChangeEvent<HTMLSelectElement>) => setForm({ ...form, unit: selectChangeEvent.target.value })}>
               <option value="un">Unidade (un)</option>
               <option value="kg">Quilograma (kg)</option>
               <option value="m">Metro (m)</option>
@@ -364,7 +364,7 @@ function MaterialModal({
           </div>
           <div className="form-group">
             <label>Categoria</label>
-            <input className="input" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} />
+            <input className="input" value={form.category} onChange={(inputChangeEvent: ChangeEvent<HTMLInputElement>) => setForm({ ...form, category: inputChangeEvent.target.value })} />
           </div>
         </div>
         <button type="submit" className="btn btn-block mt-4">
@@ -393,13 +393,13 @@ export default function DashboardPage() {
 
   const loadData = useCallback(async () => {
     try {
-      const [s, l, m, p] = await Promise.all([
+      const [fetchedSuppliers, fetchedLabor, fetchedMaterials, fetchedPrices] = await Promise.all([
         api.getSuppliers(), api.getLabor(), api.getMaterials(), api.getPrices(),
       ]);
-      setSuppliers(s);
-      setLabor(l);
-      setMaterials(m);
-      setPrices(p);
+      setSuppliers(fetchedSuppliers);
+      setLabor(fetchedLabor);
+      setMaterials(fetchedMaterials);
+      setPrices(fetchedPrices);
     } catch (err) {
       console.error('Failed to load data:', err);
     }
@@ -421,7 +421,7 @@ export default function DashboardPage() {
   };
 
   const filteredPrices = filterMaterial
-    ? prices.filter((p) => String(p.material_id) === filterMaterial)
+    ? prices.filter((priceItem) => String(priceItem.material_id) === filterMaterial)
     : prices;
 
   return (
@@ -440,13 +440,13 @@ export default function DashboardPage() {
             <button className="btn btn-secondary" onClick={() => setMaterialModal({ open: true, data: null })}>+ Material</button>
           </div>
           <div className="flex gap-3 items-center" style={{ flexWrap: 'wrap' }}>
-            <select className="input" style={{ width: '200px' }} value={filterMaterial} onChange={(e) => setFilterMaterial(e.target.value)}>
+            <select className="input" style={{ width: '200px' }} value={filterMaterial} onChange={(selectChangeEvent: ChangeEvent<HTMLSelectElement>) => setFilterMaterial(selectChangeEvent.target.value)}>
               <option value="">Todos Materiais</option>
-              {materials.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+              {materials.map((materialOption) => <option key={materialOption.id} value={materialOption.id}>{materialOption.name}</option>)}
             </select>
             <div className="flex gap-2 items-center">
               <label className="text-sm text-muted">Qtd:</label>
-              <input className="input" style={{ width: '70px' }} type="number" min="1" value={quantity} onChange={(e) => setQuantity(parseInt(e.target.value) || 1)} />
+              <input className="input" style={{ width: '70px' }} type="number" min="1" value={quantity} onChange={(inputChangeEvent: ChangeEvent<HTMLInputElement>) => setQuantity(parseInt(inputChangeEvent.target.value, 10) || 1)} />
             </div>
           </div>
         </div>
@@ -469,22 +469,22 @@ export default function DashboardPage() {
               {suppliers.length === 0 ? (
                 <tr><td colSpan={7}><div className="empty-state"><div className="empty-state-icon">📦</div><div className="empty-state-text">Nenhum fornecedor cadastrado</div></div></td></tr>
               ) : (
-                suppliers.map((s) => (
-                  <tr key={s.id}>
-                    <td className="font-medium">{s.name}</td>
-                    <td>{s.category || <span className="text-muted">-</span>}</td>
-                    <td>{s.contact || <span className="text-muted">-</span>}</td>
-                    <td>{s.phone || <span className="text-muted">-</span>}</td>
+                suppliers.map((supplierItem) => (
+                  <tr key={supplierItem.id}>
+                    <td className="font-medium">{supplierItem.name}</td>
+                    <td>{supplierItem.category || <span className="text-muted">-</span>}</td>
+                    <td>{supplierItem.contact || <span className="text-muted">-</span>}</td>
+                    <td>{supplierItem.phone || <span className="text-muted">-</span>}</td>
                     <td>
                       <div className="tags">
-                        {(s.payment_methods || []).map((m: string, i: number) => <span key={i} className="tag tag-sm">{m}</span>)}
+                        {(supplierItem.payment_methods || []).map((methodName: string, itemIndex: number) => <span key={itemIndex} className="tag tag-sm">{methodName}</span>)}
                       </div>
                     </td>
-                    <td>{s.tax_rate || 0}%</td>
+                    <td>{supplierItem.tax_rate || 0}%</td>
                     <td>
                       <div className="table-actions">
-                        <button className="btn btn-ghost btn-sm" onClick={() => setSupplierModal({ open: true, data: s })}>✏️</button>
-                        <button className="btn btn-ghost btn-sm" onClick={() => setDeleteConfirm({ open: true, type: 'supplier', id: s.id, name: s.name })}>🗑️</button>
+                        <button className="btn btn-ghost btn-sm" onClick={() => setSupplierModal({ open: true, data: supplierItem })}>✏️</button>
+                        <button className="btn btn-ghost btn-sm" onClick={() => setDeleteConfirm({ open: true, type: 'supplier', id: supplierItem.id, name: supplierItem.name })}>🗑️</button>
                       </div>
                     </td>
                   </tr>
@@ -510,16 +510,16 @@ export default function DashboardPage() {
               {filteredPrices.length === 0 ? (
                 <tr><td colSpan={5}><div className="empty-state"><div className="empty-state-icon">💰</div><div className="empty-state-text">Nenhum preço cadastrado</div></div></td></tr>
               ) : (
-                filteredPrices.map((p) => {
-                  const taxAmount = p.price * (p.tax_rate || 0) / 100;
-                  const totalPrice = (p.price + taxAmount) * quantity;
+                filteredPrices.map((priceItem) => {
+                  const calculatedTaxAmount = priceItem.price * (priceItem.tax_rate || 0) / 100;
+                  const calculatedTotalPrice = (priceItem.price + calculatedTaxAmount) * quantity;
                   return (
-                    <tr key={p.id}>
-                      <td className="font-medium">{p.supplier_name}</td>
-                      <td>{p.material_name} ({p.unit})</td>
-                      <td>{formatCurrency(p.price)}</td>
-                      <td>{p.tax_rate || 0}%</td>
-                      <td className="font-bold text-success">{formatCurrency(totalPrice)}</td>
+                    <tr key={priceItem.id}>
+                      <td className="font-medium">{priceItem.supplier_name}</td>
+                      <td>{priceItem.material_name} ({priceItem.unit})</td>
+                      <td>{formatCurrency(priceItem.price)}</td>
+                      <td>{priceItem.tax_rate || 0}%</td>
+                      <td className="font-bold text-success">{formatCurrency(calculatedTotalPrice)}</td>
                     </tr>
                   );
                 })
@@ -544,35 +544,35 @@ export default function DashboardPage() {
               {materials.length === 0 ? (
                 <tr><td colSpan={5}><div className="empty-state"><div className="empty-state-icon">🧱</div><div className="empty-state-text">Nenhum material cadastrado</div></div></td></tr>
               ) : (
-                materials.map((m) => {
-                  const matPrices = prices.filter((p) => p.material_id === m.id);
-                  const isExpanded = expandedMaterial === m.id;
+                materials.map((materialItem) => {
+                  const associatedMaterialPrices = prices.filter((priceEntry) => priceEntry.material_id === materialItem.id);
+                  const isMaterialExpanded = expandedMaterial === materialItem.id;
                   return (
-                    <React.Fragment key={m.id}>
+                    <React.Fragment key={materialItem.id}>
                       <tr>
-                        <td className="font-medium">{m.name}</td>
-                        <td>{m.unit}</td>
-                        <td>{m.category || <span className="text-muted">-</span>}</td>
+                        <td className="font-medium">{materialItem.name}</td>
+                        <td>{materialItem.unit}</td>
+                        <td>{materialItem.category || <span className="text-muted">-</span>}</td>
                         <td>
-                          <button className="btn btn-ghost btn-sm" onClick={() => setExpandedMaterial(isExpanded ? null : m.id)}>
-                            📦 {matPrices.length} fornecedor(es) {isExpanded ? '▲' : '▼'}
+                          <button className="btn btn-ghost btn-sm" onClick={() => setExpandedMaterial(isMaterialExpanded ? null : materialItem.id)}>
+                            📦 {associatedMaterialPrices.length} fornecedor(es) {isMaterialExpanded ? '▲' : '▼'}
                           </button>
                         </td>
                         <td>
                           <div className="table-actions">
-                            <button className="btn btn-ghost btn-sm" onClick={() => setMaterialModal({ open: true, data: m })}>✏️</button>
-                            <button className="btn btn-ghost btn-sm" onClick={() => setDeleteConfirm({ open: true, type: 'material', id: m.id, name: m.name })}>🗑️</button>
+                            <button className="btn btn-ghost btn-sm" onClick={() => setMaterialModal({ open: true, data: materialItem })}>✏️</button>
+                            <button className="btn btn-ghost btn-sm" onClick={() => setDeleteConfirm({ open: true, type: 'material', id: materialItem.id, name: materialItem.name })}>🗑️</button>
                           </div>
                         </td>
                       </tr>
-                      {isExpanded && matPrices.length > 0 && (
-                        <tr key={`exp-${m.id}`}>
+                      {isMaterialExpanded && associatedMaterialPrices.length > 0 && (
+                        <tr key={`exp-${materialItem.id}`}>
                           <td colSpan={5} style={{ padding: '0 1rem 1rem' }}>
                             <div className="material-expand">
-                              {matPrices.map((p) => (
-                                <div key={p.id} className="price-row">
-                                  <span className="font-medium">{p.supplier_name}</span>
-                                  <span className="text-success font-bold">{formatCurrency(p.price)}</span>
+                              {associatedMaterialPrices.map((priceDetail) => (
+                                <div key={priceDetail.id} className="price-row">
+                                  <span className="font-medium">{priceDetail.supplier_name}</span>
+                                  <span className="text-success font-bold">{formatCurrency(priceDetail.price)}</span>
                                 </div>
                               ))}
                             </div>
@@ -603,22 +603,22 @@ export default function DashboardPage() {
               {labor.length === 0 ? (
                 <tr><td colSpan={7}><div className="empty-state"><div className="empty-state-icon">👷</div><div className="empty-state-text">Nenhuma mão de obra cadastrada</div></div></td></tr>
               ) : (
-                labor.map((l) => (
-                  <tr key={l.id}>
-                    <td className="font-medium">{l.name}</td>
-                    <td>{l.role || <span className="text-muted">-</span>}</td>
-                    <td>{l.phone || <span className="text-muted">-</span>}</td>
+                labor.map((laborItem) => (
+                  <tr key={laborItem.id}>
+                    <td className="font-medium">{laborItem.name}</td>
+                    <td>{laborItem.role || <span className="text-muted">-</span>}</td>
+                    <td>{laborItem.phone || <span className="text-muted">-</span>}</td>
                     <td>
                       <div className="tags">
-                        {(l.payment_methods || []).map((m: string, i: number) => <span key={i} className="tag tag-sm">{m}</span>)}
+                        {(laborItem.payment_methods || []).map((methodName: string, itemIndex: number) => <span key={itemIndex} className="tag tag-sm">{methodName}</span>)}
                       </div>
                     </td>
-                    <td className="font-bold">{formatCurrency(l.daily_rate)}</td>
-                    <td>{l.tax_rate || 0}%</td>
+                    <td className="font-bold">{formatCurrency(laborItem.daily_rate)}</td>
+                    <td>{laborItem.tax_rate || 0}%</td>
                     <td>
                       <div className="table-actions">
-                        <button className="btn btn-ghost btn-sm" onClick={() => setLaborModal({ open: true, data: l })}>✏️</button>
-                        <button className="btn btn-ghost btn-sm" onClick={() => setDeleteConfirm({ open: true, type: 'labor', id: l.id, name: l.name })}>🗑️</button>
+                        <button className="btn btn-ghost btn-sm" onClick={() => setLaborModal({ open: true, data: laborItem })}>✏️</button>
+                        <button className="btn btn-ghost btn-sm" onClick={() => setDeleteConfirm({ open: true, type: 'labor', id: laborItem.id, name: laborItem.name })}>🗑️</button>
                       </div>
                     </td>
                   </tr>

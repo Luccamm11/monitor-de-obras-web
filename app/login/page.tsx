@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, FormEvent } from 'react';
+import { useState, useEffect, FormEvent, ChangeEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { login, isAuthenticated } from '@/lib/auth';
 
@@ -17,18 +17,18 @@ export default function LoginPage() {
     }
   }, [router]);
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (submitEvent: FormEvent) => {
+    submitEvent.preventDefault();
     setError('');
     setLoading(true);
 
-    await new Promise(r => setTimeout(r, 500));
+    await new Promise((resolveTimeout) => setTimeout(resolveTimeout, 500));
 
-    const result = login(username, password);
-    if (result.success) {
+    const authResult = login(username, password);
+    if (authResult.success) {
       router.push('/dashboard');
     } else {
-      setError(result.error || 'Erro ao efetuar login');
+      setError(authResult.error || 'Erro ao efetuar login');
       setLoading(false);
     }
   };
@@ -50,7 +50,7 @@ export default function LoginPage() {
               className="input"
               type="text"
               value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              onChange={(inputChangeEvent: ChangeEvent<HTMLInputElement>) => setUsername(inputChangeEvent.target.value)}
               placeholder="Digite seu usuário"
               autoComplete="username"
               required
@@ -64,7 +64,7 @@ export default function LoginPage() {
               className="input"
               type="password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(inputChangeEvent: ChangeEvent<HTMLInputElement>) => setPassword(inputChangeEvent.target.value)}
               placeholder="Digite sua senha"
               autoComplete="current-password"
               required

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, FormEvent, ReactNode } from 'react';
+import { useState, useEffect, useCallback, FormEvent, MouseEvent, ReactNode } from 'react';
 import { api, formatCurrency, formatDate } from '@/lib/api';
 
 /* ==================== MODAL ==================== */
@@ -18,7 +18,7 @@ function Modal({
   if (!isOpen) return null;
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+      <div className="modal-content" onClick={(clickEvent: MouseEvent<HTMLDivElement>) => clickEvent.stopPropagation()}>
         <div className="modal-header">
           <h3>{title}</h3>
           <button className="modal-close" onClick={onClose}>×</button>
@@ -46,7 +46,7 @@ function ConfirmDialog({
   if (!isOpen) return null;
   return (
     <div className="confirm-overlay" onClick={onCancel}>
-      <div className="confirm-card" onClick={(e) => e.stopPropagation()}>
+      <div className="confirm-card" onClick={(clickEvent: MouseEvent<HTMLDivElement>) => clickEvent.stopPropagation()}>
         <div className="confirm-icon">⚠️</div>
         <h3 className="confirm-title">{title}</h3>
         <p className="confirm-text">{message}</p>
@@ -88,8 +88,8 @@ function WorkModal({
     }
   }, [editData, isOpen]);
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (formSubmitEvent: FormEvent) => {
+    formSubmitEvent.preventDefault();
     try {
       const payload = { ...form, budget: parseFloat(form.budget) || 0 };
       if (editData?.id) {
@@ -109,29 +109,29 @@ function WorkModal({
       <form onSubmit={handleSubmit}>
         <div className="form-group">
           <label>Nome da Obra *</label>
-          <input className="input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+          <input className="input" value={form.name} onChange={(inputChangeEvent) => setForm({ ...form, name: inputChangeEvent.target.value })} required />
         </div>
         <div className="form-group">
           <label>Endereço</label>
-          <input className="input" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
+          <input className="input" value={form.address} onChange={(inputChangeEvent) => setForm({ ...form, address: inputChangeEvent.target.value })} />
         </div>
         <div className="form-group">
           <label>Orçamento Previsto (R$)</label>
-          <input className="input" type="number" step="0.01" value={form.budget} onChange={(e) => setForm({ ...form, budget: e.target.value })} />
+          <input className="input" type="number" step="0.01" value={form.budget} onChange={(inputChangeEvent) => setForm({ ...form, budget: inputChangeEvent.target.value })} />
         </div>
         <div className="form-row">
           <div className="form-group">
             <label>Data Início</label>
-            <input className="input" type="date" value={form.start_date} onChange={(e) => setForm({ ...form, start_date: e.target.value })} />
+            <input className="input" type="date" value={form.start_date} onChange={(inputChangeEvent) => setForm({ ...form, start_date: inputChangeEvent.target.value })} />
           </div>
           <div className="form-group">
             <label>Data Fim (Prevista)</label>
-            <input className="input" type="date" value={form.end_date} onChange={(e) => setForm({ ...form, end_date: e.target.value })} />
+            <input className="input" type="date" value={form.end_date} onChange={(inputChangeEvent) => setForm({ ...form, end_date: inputChangeEvent.target.value })} />
           </div>
         </div>
         <div className="form-group">
           <label>Status</label>
-          <select className="input" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
+          <select className="input" value={form.status} onChange={(inputChangeEvent) => setForm({ ...form, status: inputChangeEvent.target.value })}>
             <option value="ACTIVE">Em Andamento</option>
             <option value="COMPLETED">Concluída</option>
             <option value="CANCELLED">Cancelada</option>
@@ -190,20 +190,20 @@ function TransactionModal({
   }, [editData, isOpen]);
 
   const materialPrices = form.selectedMaterial
-    ? prices.filter((p) => String(p.material_id) === form.selectedMaterial)
+    ? prices.filter((priceRecord) => String(priceRecord.material_id) === form.selectedMaterial)
     : [];
 
-  const handleSelectSupplierPrice = (price: any) => {
+  const handleSelectSupplierPrice = (priceRecord: any) => {
     setForm({
       ...form,
-      supplier_id: price.supplier_id,
-      amount: String(price.price),
-      description: form.description || price.material_name,
+      supplier_id: priceRecord.supplier_id,
+      amount: String(priceRecord.price),
+      description: form.description || priceRecord.material_name,
     });
   };
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (formSubmitEvent: FormEvent) => {
+    formSubmitEvent.preventDefault();
     const payload = {
       description: form.description,
       amount: parseFloat(form.amount) || 0,
@@ -233,18 +233,18 @@ function TransactionModal({
         {!editData && materials.length > 0 && (
           <div className="form-group">
             <label>🔍 Selecionar Material (ver preços por fornecedor)</label>
-            <select className="input" value={form.selectedMaterial} onChange={(e) => setForm({ ...form, selectedMaterial: e.target.value })}>
+            <select className="input" value={form.selectedMaterial} onChange={(inputChangeEvent) => setForm({ ...form, selectedMaterial: inputChangeEvent.target.value })}>
               <option value="">Selecione um material...</option>
-              {materials.map((m) => <option key={m.id} value={m.id}>{m.name} ({m.unit})</option>)}
+              {materials.map((materialOption) => <option key={materialOption.id} value={materialOption.id}>{materialOption.name} ({materialOption.unit})</option>)}
             </select>
             {materialPrices.length > 0 && (
               <div className="material-expand mt-2">
                 <p className="text-xs text-muted mb-2">Clique em um fornecedor para preencher automaticamente:</p>
-                {materialPrices.map((p) => (
-                  <div key={p.id} className="price-row" style={{ cursor: 'pointer' }}
-                    onClick={() => handleSelectSupplierPrice(p)}>
-                    <span className="font-medium">{p.supplier_name}</span>
-                    <span className="text-success font-bold">{formatCurrency(p.price)}</span>
+                {materialPrices.map((priceRecord) => (
+                  <div key={priceRecord.id} className="price-row" style={{ cursor: 'pointer' }}
+                    onClick={() => handleSelectSupplierPrice(priceRecord)}>
+                    <span className="font-medium">{priceRecord.supplier_name}</span>
+                    <span className="text-success font-bold">{formatCurrency(priceRecord.price)}</span>
                   </div>
                 ))}
               </div>
@@ -257,21 +257,21 @@ function TransactionModal({
 
         <div className="form-group">
           <label>Descrição *</label>
-          <input className="input" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} required />
+          <input className="input" value={form.description} onChange={(inputChangeEvent) => setForm({ ...form, description: inputChangeEvent.target.value })} required />
         </div>
         <div className="form-row">
           <div className="form-group">
             <label>Valor (R$) *</label>
-            <input className="input" type="number" step="0.01" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} required />
+            <input className="input" type="number" step="0.01" value={form.amount} onChange={(inputChangeEvent) => setForm({ ...form, amount: inputChangeEvent.target.value })} required />
           </div>
           <div className="form-group">
             <label>Data</label>
-            <input className="input" type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
+            <input className="input" type="date" value={form.date} onChange={(inputChangeEvent) => setForm({ ...form, date: inputChangeEvent.target.value })} />
           </div>
         </div>
         <div className="form-group">
           <label>Categoria</label>
-          <input className="input" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} list="categories" placeholder="Ex: Material, Mão de Obra" />
+          <input className="input" value={form.category} onChange={(inputChangeEvent) => setForm({ ...form, category: inputChangeEvent.target.value })} list="categories" placeholder="Ex: Material, Mão de Obra" />
           <datalist id="categories">
             <option value="Material Hidráulico" />
             <option value="Material Elétrico" />
@@ -283,16 +283,16 @@ function TransactionModal({
         <div className="form-row">
           <div className="form-group">
             <label>Fornecedor</label>
-            <select className="input" value={form.supplier_id} onChange={(e) => setForm({ ...form, supplier_id: e.target.value, labor_id: '' })}>
+            <select className="input" value={form.supplier_id} onChange={(inputChangeEvent) => setForm({ ...form, supplier_id: inputChangeEvent.target.value, labor_id: '' })}>
               <option value="">Selecione...</option>
-              {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              {suppliers.map((supplierOption) => <option key={supplierOption.id} value={supplierOption.id}>{supplierOption.name}</option>)}
             </select>
           </div>
           <div className="form-group">
             <label>Mão de Obra</label>
-            <select className="input" value={form.labor_id} onChange={(e) => setForm({ ...form, labor_id: e.target.value, supplier_id: '' })}>
+            <select className="input" value={form.labor_id} onChange={(inputChangeEvent) => setForm({ ...form, labor_id: inputChangeEvent.target.value, supplier_id: '' })}>
               <option value="">Selecione...</option>
-              {labor.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+              {labor.map((laborOption) => <option key={laborOption.id} value={laborOption.id}>{laborOption.name}</option>)}
             </select>
           </div>
         </div>
@@ -328,18 +328,18 @@ export default function ObrasPage() {
 
   const loadWorkDetails = useCallback(async (workId: any) => {
     try {
-      const [txs, s, l, m, p] = await Promise.all([
+      const [fetchedTxs, fetchedSuppliers, fetchedLabor, fetchedMaterials, fetchedPrices] = await Promise.all([
         api.getTransactions({ work_id: workId }),
         api.getSuppliers(),
         api.getLabor(),
         api.getMaterials(),
         api.getPrices(),
       ]);
-      setTransactions(txs);
-      setSuppliers(s);
-      setLabor(l);
-      setMaterials(m);
-      setPrices(p);
+      setTransactions(fetchedTxs);
+      setSuppliers(fetchedSuppliers);
+      setLabor(fetchedLabor);
+      setMaterials(fetchedMaterials);
+      setPrices(fetchedPrices);
     } catch (err) {
       console.error(err);
     }
@@ -409,17 +409,17 @@ export default function ObrasPage() {
                 {transactions.length === 0 ? (
                   <tr><td colSpan={6}><div className="empty-state"><div className="empty-state-icon">📋</div><div className="empty-state-text">Nenhuma transação nesta obra</div></div></td></tr>
                 ) : (
-                  transactions.map((t) => (
-                    <tr key={t.id}>
-                      <td>{formatDate(t.date)}</td>
-                      <td className="font-medium">{t.description}</td>
-                      <td>{t.category || <span className="text-muted">-</span>}</td>
-                      <td>{t.supplier_name || t.labor_name || <span className="text-muted">-</span>}</td>
-                      <td className="font-bold text-danger">{formatCurrency(t.amount)}</td>
+                  transactions.map((transactionRow) => (
+                    <tr key={transactionRow.id}>
+                      <td>{formatDate(transactionRow.date)}</td>
+                      <td className="font-medium">{transactionRow.description}</td>
+                      <td>{transactionRow.category || <span className="text-muted">-</span>}</td>
+                      <td>{transactionRow.supplier_name || transactionRow.labor_name || <span className="text-muted">-</span>}</td>
+                      <td className="font-bold text-danger">{formatCurrency(transactionRow.amount)}</td>
                       <td>
                         <div className="table-actions">
-                          <button className="btn btn-ghost btn-sm" onClick={() => setTxModal({ open: true, data: t })}>✏️</button>
-                          <button className="btn btn-ghost btn-sm" onClick={() => setDeleteConfirm({ open: true, type: 'transaction', id: t.id, name: t.description })}>🗑️</button>
+                          <button className="btn btn-ghost btn-sm" onClick={() => setTxModal({ open: true, data: transactionRow })}>✏️</button>
+                          <button className="btn btn-ghost btn-sm" onClick={() => setDeleteConfirm({ open: true, type: 'transaction', id: transactionRow.id, name: transactionRow.description })}>🗑️</button>
                         </div>
                       </td>
                     </tr>
@@ -468,24 +468,24 @@ export default function ObrasPage() {
             </div>
           </div>
         ) : (
-          works.map((work) => (
-            <div key={work.id} className={`card card-hover work-card status-${work.status}`} onClick={() => setActiveWork(work)}>
+          works.map((workCardItem) => (
+            <div key={workCardItem.id} className={`card card-hover work-card status-${workCardItem.status}`} onClick={() => setActiveWork(workCardItem)}>
               <div className="flex justify-between items-start">
-                <div className="work-card-name">{work.name}</div>
-                <span className={`tag tag-sm ${work.status === 'ACTIVE' ? 'tag-success' : work.status === 'COMPLETED' ? '' : 'tag-danger'}`}>
-                  {statusLabels[work.status] || work.status}
+                <div className="work-card-name">{workCardItem.name}</div>
+                <span className={`tag tag-sm ${workCardItem.status === 'ACTIVE' ? 'tag-success' : workCardItem.status === 'COMPLETED' ? '' : 'tag-danger'}`}>
+                  {statusLabels[workCardItem.status] || workCardItem.status}
                 </span>
               </div>
-              <p className="work-card-address">{work.address || 'Sem endereço'}</p>
+              <p className="work-card-address">{workCardItem.address || 'Sem endereço'}</p>
 
               <div className="work-card-footer">
                 <div>
                   <div className="work-card-cost-label">Custo Atual</div>
-                  <div className="work-card-cost">{formatCurrency(work.total_cost)}</div>
+                  <div className="work-card-cost">{formatCurrency(workCardItem.total_cost)}</div>
                 </div>
                 <div className="flex gap-2">
-                  <button className="btn btn-ghost btn-sm" onClick={(e) => { e.stopPropagation(); setWorkModal({ open: true, data: work }); }}>✏️</button>
-                  <button className="btn btn-ghost btn-sm" onClick={(e) => { e.stopPropagation(); setDeleteConfirm({ open: true, type: 'work', id: work.id, name: work.name }); }}>🗑️</button>
+                  <button className="btn btn-ghost btn-sm" onClick={(cardClickEvent: MouseEvent<HTMLButtonElement>) => { cardClickEvent.stopPropagation(); setWorkModal({ open: true, data: workCardItem }); }}>✏️</button>
+                  <button className="btn btn-ghost btn-sm" onClick={(cardClickEvent: MouseEvent<HTMLButtonElement>) => { cardClickEvent.stopPropagation(); setDeleteConfirm({ open: true, type: 'work', id: workCardItem.id, name: workCardItem.name }); }}>🗑️</button>
                 </div>
               </div>
             </div>
