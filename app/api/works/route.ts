@@ -1,5 +1,10 @@
 import { supabase, createResponse, errorResponse } from '@/lib/server';
 import { workSchema } from '@/lib/schemas';
+import type { Database } from '@/lib/database.types';
+
+type WorkRow = Database['public']['Tables']['works']['Row'] & {
+  total_cost?: number;
+};
 
 export async function GET() {
   try {
@@ -11,7 +16,9 @@ export async function GET() {
 
     if (error) throw error;
 
-    for (const work of works) {
+    const result: WorkRow[] = works as WorkRow[];
+
+    for (const work of result) {
       const { data: txData } = await supabase
         .from('transactions')
         .select('amount')
@@ -20,7 +27,7 @@ export async function GET() {
       work.total_cost = (txData || []).reduce((sum: number, t: any) => sum + (t.amount || 0), 0);
     }
 
-    return createResponse(works);
+    return createResponse(result);
   } catch (err: any) {
     return errorResponse(err.message);
   }

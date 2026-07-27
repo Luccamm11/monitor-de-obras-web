@@ -39,7 +39,7 @@ export async function GET(request: Request) {
       query = query.gte('date', dateFrom);
     }
     if (workId) {
-      query = query.eq('work_id', workId);
+      query = query.eq('work_id', parseInt(workId, 10));
     }
 
     const { data, error } = await query;

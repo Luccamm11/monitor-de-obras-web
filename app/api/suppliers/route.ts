@@ -1,5 +1,10 @@
 import { supabase, createResponse, errorResponse } from '@/lib/server';
 import { supplierSchema } from '@/lib/schemas';
+import type { Database } from '@/lib/database.types';
+
+type SupplierRow = Database['public']['Tables']['suppliers']['Row'] & {
+  payment_methods?: string[];
+};
 
 export async function GET() {
   try {
@@ -11,15 +16,17 @@ export async function GET() {
 
     if (error) throw error;
 
-    for (const s of suppliers) {
+    const result: SupplierRow[] = suppliers as SupplierRow[];
+
+    for (const s of result) {
       const { data: methods } = await supabase
         .from('payment_methods')
         .select('method')
         .eq('supplier_id', s.id);
-      s.payment_methods = (methods || []).map((m: any) => m.method);
+      s.payment_methods = (methods || []).map((m) => m.method);
     }
 
-    return createResponse(suppliers);
+    return createResponse(result);
   } catch (err: any) {
     return errorResponse(err.message);
   }
@@ -31,7 +38,6 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { name, contact, phone, category, tax_rate, payment_methods, materials: materialPrices } = body;
 
-    // Validate with Zod
     supplierSchema.parse({ name, contact, phone, category, taxRate: parseFloat(tax_rate) || 0 });
 
     const { data: supplier, error } = await supabase

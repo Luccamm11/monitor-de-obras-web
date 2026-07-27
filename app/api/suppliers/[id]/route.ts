@@ -4,20 +4,21 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
   try {
     if (!supabase) return errorResponse('Supabase não configurado');
     const { id } = await params;
+    const numId = parseInt(id, 10);
     const body = await request.json();
     const { name, contact, phone, category, tax_rate, payment_methods } = body;
 
     const { error } = await supabase
       .from('suppliers')
       .update({ name, contact, phone, category, tax_rate: tax_rate || 0 })
-      .eq('id', id);
+      .eq('id', numId);
 
     if (error) throw error;
 
-    await supabase.from('payment_methods').delete().eq('supplier_id', id);
+    await supabase.from('payment_methods').delete().eq('supplier_id', numId);
     if (payment_methods?.length) {
       await supabase.from('payment_methods').insert(
-        payment_methods.map((method: string) => ({ supplier_id: parseInt(id), method }))
+        payment_methods.map((method: string) => ({ supplier_id: numId, method }))
       );
     }
 
@@ -31,9 +32,10 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
   try {
     if (!supabase) return errorResponse('Supabase não configurado');
     const { id } = await params;
-    await supabase.from('payment_methods').delete().eq('supplier_id', id);
-    await supabase.from('supplier_material_prices').delete().eq('supplier_id', id);
-    const { error } = await supabase.from('suppliers').delete().eq('id', id);
+    const numId = parseInt(id, 10);
+    await supabase.from('payment_methods').delete().eq('supplier_id', numId);
+    await supabase.from('supplier_material_prices').delete().eq('supplier_id', numId);
+    const { error } = await supabase.from('suppliers').delete().eq('id', numId);
     if (error) throw error;
     return createResponse({ success: true });
   } catch (err: any) {

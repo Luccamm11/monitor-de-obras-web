@@ -1,5 +1,10 @@
 import { supabase, createResponse, errorResponse } from '@/lib/server';
 import { laborSchema } from '@/lib/schemas';
+import type { Database } from '@/lib/database.types';
+
+type LaborRow = Database['public']['Tables']['labor']['Row'] & {
+  payment_methods?: string[];
+};
 
 export async function GET() {
   try {
@@ -7,15 +12,17 @@ export async function GET() {
     const { data: labor, error } = await supabase.from('labor').select('*').order('name');
     if (error) throw error;
 
-    for (const l of labor) {
+    const result: LaborRow[] = labor as LaborRow[];
+
+    for (const l of result) {
       const { data: methods } = await supabase
         .from('payment_methods')
         .select('method')
         .eq('labor_id', l.id);
-      l.payment_methods = (methods || []).map((m: any) => m.method);
+      l.payment_methods = (methods || []).map((m) => m.method);
     }
 
-    return createResponse(labor);
+    return createResponse(result);
   } catch (err: any) {
     return errorResponse(err.message);
   }

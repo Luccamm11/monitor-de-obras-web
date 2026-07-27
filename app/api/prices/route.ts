@@ -15,7 +15,7 @@ export async function GET(request: Request) {
       `);
 
     if (materialId) {
-      query = query.eq('material_id', materialId);
+      query = query.eq('material_id', parseInt(materialId, 10));
     }
 
     const { data, error } = await query;

@@ -4,6 +4,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
   try {
     if (!supabase) return errorResponse('Supabase não configurado');
     const { id } = await params;
+    const numId = parseInt(id, 10);
     const body = await request.json();
     const { error } = await supabase
       .from('transactions')
@@ -18,7 +19,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
         tax_amount: body.tax_amount || 0,
         date: body.date,
       })
-      .eq('id', id);
+      .eq('id', numId);
 
     if (error) throw error;
     return createResponse({ success: true });
@@ -31,7 +32,8 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
   try {
     if (!supabase) return errorResponse('Supabase não configurado');
     const { id } = await params;
-    const { error } = await supabase.from('transactions').delete().eq('id', id);
+    const numId = parseInt(id, 10);
+    const { error } = await supabase.from('transactions').delete().eq('id', numId);
     if (error) throw error;
     return createResponse({ success: true });
   } catch (err: any) {
