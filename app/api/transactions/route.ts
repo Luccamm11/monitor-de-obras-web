@@ -1,41 +1,41 @@
 import { db, createResponse, errorResponse } from '@/lib/server';
 import { transactions, suppliers, labor, works } from '@/lib/db/schema';
 import { transactionSchema } from '@/lib/schemas';
-import { desc, eq, gte, and } from 'drizzle-orm';
+import { type SQL, desc, eq, gte, and } from 'drizzle-orm';
 
-function getDateFilter(filter: string | null): string | null {
-  if (!filter) return null;
-  const now = new Date();
-  const map: Record<string, number> = {
+function calculateDateCutoff(datePeriodFilter: string | null): string | null {
+  if (!datePeriodFilter) return null;
+  const nowTimestamp = new Date();
+  const periodDaysMap: Record<string, number> = {
     '24h': 1,
     '7d': 7,
     '30d': 30,
     '90d': 90,
     'year': 365,
   };
-  const days = map[filter];
-  if (!days) return null;
-  const d = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
-  return d.toISOString();
+  const daysOffset = periodDaysMap[datePeriodFilter];
+  if (!daysOffset) return null;
+  const calculatedDate = new Date(nowTimestamp.getTime() - daysOffset * 24 * 60 * 60 * 1000);
+  return calculatedDate.toISOString();
 }
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const filter = searchParams.get('filter');
-    const workId = searchParams.get('work_id');
+    const datePeriodFilter = searchParams.get('filter');
+    const filterWorkId = searchParams.get('work_id');
 
-    const dateFrom = getDateFilter(filter);
+    const dateCutoffIso = calculateDateCutoff(datePeriodFilter);
 
-    const conditions = [];
-    if (dateFrom) {
-      conditions.push(gte(transactions.date, dateFrom));
+    const filterConditions: SQL<unknown>[] = [];
+    if (dateCutoffIso) {
+      filterConditions.push(gte(transactions.date, dateCutoffIso));
     }
-    if (workId) {
-      conditions.push(eq(transactions.workId, parseInt(workId, 10)));
+    if (filterWorkId) {
+      filterConditions.push(eq(transactions.workId, parseInt(filterWorkId, 10)));
     }
 
-    const query = db
+    const transactionQuery = db
       .select({
         id: transactions.id,
         description: transactions.description,
@@ -58,9 +58,11 @@ export async function GET(request: Request) {
       .leftJoin(works, eq(transactions.workId, works.id))
       .orderBy(desc(transactions.date));
 
-    const data = conditions.length ? await query.where(and(...conditions)) : await query;
+    const retrievedTransactions = filterConditions.length
+      ? await transactionQuery.where(and(...filterConditions))
+      : await transactionQuery;
 
-    return createResponse(data);
+    return createResponse(retrievedTransactions);
   } catch (err: any) {
     return errorResponse(err.message);
   }
@@ -68,34 +70,34 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
+    const requestBody = await request.json();
 
     transactionSchema.parse({
-      description: body.description,
-      amount: parseFloat(body.amount) || 0,
-      type: body.type || 'EXPENSE',
-      category: body.category,
-      supplierId: body.supplier_id ? parseInt(body.supplier_id) : null,
-      laborId: body.labor_id ? parseInt(body.labor_id) : null,
-      workId: body.work_id ? parseInt(body.work_id) : null,
+      description: requestBody.description,
+      amount: parseFloat(requestBody.amount) || 0,
+      type: requestBody.type || 'EXPENSE',
+      category: requestBody.category,
+      supplierId: requestBody.supplier_id ? parseInt(requestBody.supplier_id, 10) : null,
+      laborId: requestBody.labor_id ? parseInt(requestBody.labor_id, 10) : null,
+      workId: requestBody.work_id ? parseInt(requestBody.work_id, 10) : null,
     });
 
-    const [inserted] = await db
+    const [createdTransaction] = await db
       .insert(transactions)
       .values({
-        description: body.description,
-        amount: body.amount,
-        type: body.type || 'EXPENSE',
-        category: body.category || null,
-        supplierId: body.supplier_id ? parseInt(body.supplier_id) : null,
-        laborId: body.labor_id ? parseInt(body.labor_id) : null,
-        workId: body.work_id ? parseInt(body.work_id) : null,
-        taxAmount: body.tax_amount || 0,
-        date: body.date || new Date().toISOString(),
+        description: requestBody.description,
+        amount: requestBody.amount,
+        type: requestBody.type || 'EXPENSE',
+        category: requestBody.category || null,
+        supplierId: requestBody.supplier_id ? parseInt(requestBody.supplier_id, 10) : null,
+        laborId: requestBody.labor_id ? parseInt(requestBody.labor_id, 10) : null,
+        workId: requestBody.work_id ? parseInt(requestBody.work_id, 10) : null,
+        taxAmount: requestBody.tax_amount || 0,
+        date: requestBody.date || new Date().toISOString(),
       })
       .returning();
 
-    return createResponse({ id: inserted.id });
+    return createResponse({ id: createdTransaction.id });
   } catch (err: any) {
     return errorResponse(err.message);
   }

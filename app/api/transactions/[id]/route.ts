@@ -5,23 +5,23 @@ import { eq } from 'drizzle-orm';
 export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    const numId = parseInt(id, 10);
-    const body = await request.json();
+    const targetTransactionId = parseInt(id, 10);
+    const requestBody = await request.json();
 
     await db
       .update(transactions)
       .set({
-        description: body.description,
-        amount: body.amount,
-        type: body.type || 'EXPENSE',
-        category: body.category || null,
-        supplierId: body.supplier_id ? parseInt(body.supplier_id) : null,
-        laborId: body.labor_id ? parseInt(body.labor_id) : null,
-        workId: body.work_id ? parseInt(body.work_id) : null,
-        taxAmount: body.tax_amount || 0,
-        date: body.date,
+        description: requestBody.description,
+        amount: requestBody.amount,
+        type: requestBody.type || 'EXPENSE',
+        category: requestBody.category || null,
+        supplierId: requestBody.supplier_id ? parseInt(requestBody.supplier_id, 10) : null,
+        laborId: requestBody.labor_id ? parseInt(requestBody.labor_id, 10) : null,
+        workId: requestBody.work_id ? parseInt(requestBody.work_id, 10) : null,
+        taxAmount: requestBody.tax_amount || 0,
+        date: requestBody.date,
       })
-      .where(eq(transactions.id, numId));
+      .where(eq(transactions.id, targetTransactionId));
 
     return createResponse({ success: true });
   } catch (err: any) {
@@ -32,9 +32,9 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    const numId = parseInt(id, 10);
+    const targetTransactionId = parseInt(id, 10);
 
-    await db.delete(transactions).where(eq(transactions.id, numId));
+    await db.delete(transactions).where(eq(transactions.id, targetTransactionId));
 
     return createResponse({ success: true });
   } catch (err: any) {

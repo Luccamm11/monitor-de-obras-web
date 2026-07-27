@@ -5,9 +5,9 @@ import { eq } from 'drizzle-orm';
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const materialId = searchParams.get('material_id');
+    const filterMaterialId = searchParams.get('material_id');
 
-    const query = db
+    const priceQuery = db
       .select({
         id: supplierMaterialPrices.id,
         supplier_id: supplierMaterialPrices.supplierId,
@@ -23,11 +23,11 @@ export async function GET(request: Request) {
       .leftJoin(suppliers, eq(supplierMaterialPrices.supplierId, suppliers.id))
       .leftJoin(materials, eq(supplierMaterialPrices.materialId, materials.id));
 
-    const data = materialId
-      ? await query.where(eq(supplierMaterialPrices.materialId, parseInt(materialId, 10)))
-      : await query;
+    const priceRecords = filterMaterialId
+      ? await priceQuery.where(eq(supplierMaterialPrices.materialId, parseInt(filterMaterialId, 10)))
+      : await priceQuery;
 
-    return createResponse(data);
+    return createResponse(priceRecords);
   } catch (err: any) {
     return errorResponse(err.message);
   }
@@ -35,10 +35,10 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
-    const { supplier_id, material_id, price } = body;
+    const requestBody = await request.json();
+    const { supplier_id, material_id, price } = requestBody;
 
-    const [inserted] = await db
+    const [savedPriceRecord] = await db
       .insert(supplierMaterialPrices)
       .values({
         supplierId: parseInt(supplier_id, 10),
@@ -55,7 +55,7 @@ export async function POST(request: Request) {
       })
       .returning();
 
-    return createResponse({ id: inserted.id });
+    return createResponse({ id: savedPriceRecord.id });
   } catch (err: any) {
     return errorResponse(err.message);
   }

@@ -5,8 +5,8 @@ import { asc } from 'drizzle-orm';
 
 export async function GET() {
   try {
-    const data = await db.select().from(materials).orderBy(asc(materials.name));
-    return createResponse(data);
+    const materialCatalog = await db.select().from(materials).orderBy(asc(materials.name));
+    return createResponse(materialCatalog);
   } catch (err: any) {
     return errorResponse(err.message);
   }
@@ -14,15 +14,15 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
-    materialSchema.parse({ name: body.name, unit: body.unit, category: body.category });
+    const requestBody = await request.json();
+    materialSchema.parse({ name: requestBody.name, unit: requestBody.unit, category: requestBody.category });
 
-    const [inserted] = await db
+    const [insertedMaterial] = await db
       .insert(materials)
-      .values({ name: body.name, unit: body.unit, category: body.category })
+      .values({ name: requestBody.name, unit: requestBody.unit, category: requestBody.category })
       .returning();
 
-    return createResponse({ id: inserted.id });
+    return createResponse({ id: insertedMaterial.id });
   } catch (err: any) {
     return errorResponse(err.message);
   }
