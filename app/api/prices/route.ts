@@ -1,7 +1,8 @@
 import { supabase, createResponse, errorResponse } from '@/lib/server';
 
-export async function GET(request) {
+export async function GET(request: Request) {
   try {
+    if (!supabase) return errorResponse('Supabase não configurado');
     const { searchParams } = new URL(request.url);
     const materialId = searchParams.get('material_id');
 
@@ -20,7 +21,7 @@ export async function GET(request) {
     const { data, error } = await query;
     if (error) throw error;
 
-    const formatted = (data || []).map(p => ({
+    const formatted = (data || []).map((p: any) => ({
       id: p.id,
       supplier_id: p.supplier_id,
       material_id: p.material_id,
@@ -33,13 +34,14 @@ export async function GET(request) {
     }));
 
     return createResponse(formatted);
-  } catch (err) {
+  } catch (err: any) {
     return errorResponse(err.message);
   }
 }
 
-export async function POST(request) {
+export async function POST(request: Request) {
   try {
+    if (!supabase) return errorResponse('Supabase não configurado');
     const body = await request.json();
     const { supplier_id, material_id, price } = body;
 
@@ -54,7 +56,7 @@ export async function POST(request) {
 
     if (error) throw error;
     return createResponse({ id: data.id });
-  } catch (err) {
+  } catch (err: any) {
     return errorResponse(err.message);
   }
 }

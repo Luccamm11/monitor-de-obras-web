@@ -1,10 +1,20 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, FormEvent, ReactNode } from 'react';
 import { api, formatCurrency, formatDate } from '@/lib/api';
 
 /* ==================== MODAL ==================== */
-function Modal({ isOpen, onClose, title, children }) {
+function Modal({
+  isOpen,
+  onClose,
+  title,
+  children,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  title: string;
+  children: ReactNode;
+}) {
   if (!isOpen) return null;
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -20,7 +30,19 @@ function Modal({ isOpen, onClose, title, children }) {
 }
 
 /* ==================== CONFIRM ==================== */
-function ConfirmDialog({ isOpen, onConfirm, onCancel, title, message }) {
+function ConfirmDialog({
+  isOpen,
+  onConfirm,
+  onCancel,
+  title,
+  message,
+}: {
+  isOpen: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+  title?: string;
+  message?: string;
+}) {
   if (!isOpen) return null;
   return (
     <div className="confirm-overlay" onClick={onCancel}>
@@ -38,8 +60,18 @@ function ConfirmDialog({ isOpen, onConfirm, onCancel, title, message }) {
 }
 
 /* ==================== WORK MODAL ==================== */
-function WorkModal({ isOpen, onClose, onSave, editData }) {
-  const [form, setForm] = useState({ name: '', address: '', start_date: '', end_date: '', budget: 0, status: 'ACTIVE' });
+function WorkModal({
+  isOpen,
+  onClose,
+  onSave,
+  editData,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onSave: () => void;
+  editData: any;
+}) {
+  const [form, setForm] = useState({ name: '', address: '', start_date: '', end_date: '', budget: '0', status: 'ACTIVE' });
 
   useEffect(() => {
     if (editData) {
@@ -56,7 +88,7 @@ function WorkModal({ isOpen, onClose, onSave, editData }) {
     }
   }, [editData, isOpen]);
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     try {
       const payload = { ...form, budget: parseFloat(form.budget) || 0 };
@@ -112,7 +144,27 @@ function WorkModal({ isOpen, onClose, onSave, editData }) {
 }
 
 /* ==================== TRANSACTION MODAL ==================== */
-function TransactionModal({ isOpen, onClose, onSave, workId, suppliers, labor, materials, prices, editData }) {
+function TransactionModal({
+  isOpen,
+  onClose,
+  onSave,
+  workId,
+  suppliers,
+  labor,
+  materials,
+  prices,
+  editData,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onSave: () => void;
+  workId: any;
+  suppliers: any[];
+  labor: any[];
+  materials: any[];
+  prices: any[];
+  editData: any;
+}) {
   const [form, setForm] = useState({
     description: '', amount: '0', category: '', supplier_id: '', labor_id: '',
     date: new Date().toISOString().split('T')[0], selectedMaterial: '',
@@ -137,12 +189,11 @@ function TransactionModal({ isOpen, onClose, onSave, workId, suppliers, labor, m
     }
   }, [editData, isOpen]);
 
-  // When a material is selected, show available supplier prices
   const materialPrices = form.selectedMaterial
-    ? prices.filter((p) => p.material_id == form.selectedMaterial)
+    ? prices.filter((p) => String(p.material_id) === form.selectedMaterial)
     : [];
 
-  const handleSelectSupplierPrice = (price) => {
+  const handleSelectSupplierPrice = (price: any) => {
     setForm({
       ...form,
       supplier_id: price.supplier_id,
@@ -151,7 +202,7 @@ function TransactionModal({ isOpen, onClose, onSave, workId, suppliers, labor, m
     });
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     const payload = {
       description: form.description,
@@ -179,7 +230,6 @@ function TransactionModal({ isOpen, onClose, onSave, workId, suppliers, labor, m
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={editData ? 'Editar Despesa' : 'Adicionar Despesa'}>
       <form onSubmit={handleSubmit}>
-        {/* Material → Supplier Price Selector */}
         {!editData && materials.length > 0 && (
           <div className="form-group">
             <label>🔍 Selecionar Material (ver preços por fornecedor)</label>
@@ -256,17 +306,17 @@ function TransactionModal({ isOpen, onClose, onSave, workId, suppliers, labor, m
 
 /* ==================== OBRAS PAGE ==================== */
 export default function ObrasPage() {
-  const [works, setWorks] = useState([]);
-  const [activeWork, setActiveWork] = useState(null);
-  const [transactions, setTransactions] = useState([]);
-  const [suppliers, setSuppliers] = useState([]);
-  const [labor, setLabor] = useState([]);
-  const [materials, setMaterials] = useState([]);
-  const [prices, setPrices] = useState([]);
+  const [works, setWorks] = useState<any[]>([]);
+  const [activeWork, setActiveWork] = useState<any | null>(null);
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [suppliers, setSuppliers] = useState<any[]>([]);
+  const [labor, setLabor] = useState<any[]>([]);
+  const [materials, setMaterials] = useState<any[]>([]);
+  const [prices, setPrices] = useState<any[]>([]);
 
-  const [workModal, setWorkModal] = useState({ open: false, data: null });
-  const [txModal, setTxModal] = useState({ open: false, data: null });
-  const [deleteConfirm, setDeleteConfirm] = useState({ open: false, type: '', id: null, name: '' });
+  const [workModal, setWorkModal] = useState<{ open: boolean; data: any }>({ open: false, data: null });
+  const [txModal, setTxModal] = useState<{ open: boolean; data: any }>({ open: false, data: null });
+  const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; type: string; id: any; name: string }>({ open: false, type: '', id: null, name: '' });
 
   const loadWorks = useCallback(async () => {
     try {
@@ -276,7 +326,7 @@ export default function ObrasPage() {
     }
   }, []);
 
-  const loadWorkDetails = useCallback(async (workId) => {
+  const loadWorkDetails = useCallback(async (workId: any) => {
     try {
       const [txs, s, l, m, p] = await Promise.all([
         api.getTransactions({ work_id: workId }),
@@ -307,7 +357,7 @@ export default function ObrasPage() {
         loadWorks();
       } else if (type === 'transaction') {
         await api.deleteTransaction(id);
-        loadWorkDetails(activeWork.id);
+        if (activeWork) loadWorkDetails(activeWork.id);
         loadWorks();
       }
     } catch (err) {
@@ -316,9 +366,8 @@ export default function ObrasPage() {
     setDeleteConfirm({ open: false, type: '', id: null, name: '' });
   };
 
-  const statusLabels = { ACTIVE: 'Em Andamento', COMPLETED: 'Concluída', CANCELLED: 'Cancelada' };
+  const statusLabels: Record<string, string> = { ACTIVE: 'Em Andamento', COMPLETED: 'Concluída', CANCELLED: 'Cancelada' };
 
-  // Work Detail View
   if (activeWork) {
     return (
       <div>
@@ -358,7 +407,7 @@ export default function ObrasPage() {
               </thead>
               <tbody>
                 {transactions.length === 0 ? (
-                  <tr><td colSpan="6"><div className="empty-state"><div className="empty-state-icon">📋</div><div className="empty-state-text">Nenhuma transação nesta obra</div></div></td></tr>
+                  <tr><td colSpan={6}><div className="empty-state"><div className="empty-state-icon">📋</div><div className="empty-state-text">Nenhuma transação nesta obra</div></div></td></tr>
                 ) : (
                   transactions.map((t) => (
                     <tr key={t.id}>
@@ -397,7 +446,6 @@ export default function ObrasPage() {
     );
   }
 
-  // Works List View
   return (
     <div>
       <div className="page-header">

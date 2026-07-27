@@ -1,7 +1,8 @@
 import { supabase, createResponse, errorResponse } from '@/lib/server';
 
-export async function GET(request, { params }) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    if (!supabase) return errorResponse('Supabase não configurado');
     const { id } = await params;
     const { data: work, error } = await supabase.from('works').select('*').eq('id', id).single();
     if (error) throw error;
@@ -12,16 +13,17 @@ export async function GET(request, { params }) {
       .select('amount')
       .eq('work_id', work.id)
       .eq('type', 'EXPENSE');
-    work.total_cost = (txData || []).reduce((sum, t) => sum + (t.amount || 0), 0);
+    work.total_cost = (txData || []).reduce((sum: number, t: any) => sum + (t.amount || 0), 0);
 
     return createResponse(work);
-  } catch (err) {
+  } catch (err: any) {
     return errorResponse(err.message);
   }
 }
 
-export async function PUT(request, { params }) {
+export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    if (!supabase) return errorResponse('Supabase não configurado');
     const { id } = await params;
     const body = await request.json();
     const { error } = await supabase
@@ -38,19 +40,20 @@ export async function PUT(request, { params }) {
 
     if (error) throw error;
     return createResponse({ success: true });
-  } catch (err) {
+  } catch (err: any) {
     return errorResponse(err.message);
   }
 }
 
-export async function DELETE(request, { params }) {
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    if (!supabase) return errorResponse('Supabase não configurado');
     const { id } = await params;
     await supabase.from('transactions').update({ work_id: null }).eq('work_id', id);
     const { error } = await supabase.from('works').delete().eq('id', id);
     if (error) throw error;
     return createResponse({ success: true });
-  } catch (err) {
+  } catch (err: any) {
     return errorResponse(err.message);
   }
 }

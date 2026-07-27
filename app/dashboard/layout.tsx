@@ -10,7 +10,7 @@ const NAV_ITEMS = [
   { name: 'Relatórios', path: '/dashboard/relatorios', icon: '📊' },
 ];
 
-export default function DashboardLayout({ children }) {
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const [ready, setReady] = useState(false);

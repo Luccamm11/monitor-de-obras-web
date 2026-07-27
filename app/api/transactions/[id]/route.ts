@@ -1,7 +1,8 @@
 import { supabase, createResponse, errorResponse } from '@/lib/server';
 
-export async function PUT(request, { params }) {
+export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    if (!supabase) return errorResponse('Supabase não configurado');
     const { id } = await params;
     const body = await request.json();
     const { error } = await supabase
@@ -21,18 +22,19 @@ export async function PUT(request, { params }) {
 
     if (error) throw error;
     return createResponse({ success: true });
-  } catch (err) {
+  } catch (err: any) {
     return errorResponse(err.message);
   }
 }
 
-export async function DELETE(request, { params }) {
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    if (!supabase) return errorResponse('Supabase não configurado');
     const { id } = await params;
     const { error } = await supabase.from('transactions').delete().eq('id', id);
     if (error) throw error;
     return createResponse({ success: true });
-  } catch (err) {
+  } catch (err: any) {
     return errorResponse(err.message);
   }
 }

@@ -1,10 +1,20 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, FormEvent, ReactNode } from 'react';
 import { api, formatCurrency } from '@/lib/api';
 
 /* ==================== MODAL ==================== */
-function Modal({ isOpen, onClose, title, children }) {
+function Modal({
+  isOpen,
+  onClose,
+  title,
+  children,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  title: string;
+  children: ReactNode;
+}) {
   if (!isOpen) return null;
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -20,7 +30,19 @@ function Modal({ isOpen, onClose, title, children }) {
 }
 
 /* ==================== CONFIRM DIALOG ==================== */
-function ConfirmDialog({ isOpen, onConfirm, onCancel, title, message }) {
+function ConfirmDialog({
+  isOpen,
+  onConfirm,
+  onCancel,
+  title,
+  message,
+}: {
+  isOpen: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+  title?: string;
+  message?: string;
+}) {
   if (!isOpen) return null;
   return (
     <div className="confirm-overlay" onClick={onCancel}>
@@ -38,8 +60,28 @@ function ConfirmDialog({ isOpen, onConfirm, onCancel, title, message }) {
 }
 
 /* ==================== SUPPLIER MODAL ==================== */
-function SupplierModal({ isOpen, onClose, onSave, materials, editData }) {
-  const [form, setForm] = useState({ name: '', contact: '', phone: '', category: '', tax_rate: 0, payment_methods: [], materials: [] });
+function SupplierModal({
+  isOpen,
+  onClose,
+  onSave,
+  materials,
+  editData,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onSave: () => void;
+  materials: any[];
+  editData: any;
+}) {
+  const [form, setForm] = useState<{
+    name: string;
+    contact: string;
+    phone: string;
+    category: string;
+    tax_rate: string;
+    payment_methods: string[];
+    materials: { id: number; price: string }[];
+  }>({ name: '', contact: '', phone: '', category: '', tax_rate: '0', payment_methods: [], materials: [] });
   const [newMethod, setNewMethod] = useState('');
 
   useEffect(() => {
@@ -65,7 +107,7 @@ function SupplierModal({ isOpen, onClose, onSave, materials, editData }) {
     }
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     try {
       const payload = { ...form, tax_rate: parseFloat(form.tax_rate) || 0 };
@@ -73,7 +115,6 @@ function SupplierModal({ isOpen, onClose, onSave, materials, editData }) {
         await api.updateSupplier(editData.id, payload);
       } else {
         const result = await api.createSupplier(payload);
-        // Add material prices for new supplier
         for (const mat of form.materials) {
           const matPrice = parseFloat(mat.price) || 0;
           if (matPrice > 0) {
@@ -158,8 +199,18 @@ function SupplierModal({ isOpen, onClose, onSave, materials, editData }) {
 }
 
 /* ==================== LABOR MODAL ==================== */
-function LaborModal({ isOpen, onClose, onSave, editData }) {
-  const [form, setForm] = useState({ name: '', role: '', daily_rate: '0', phone: '', tax_rate: '0', payment_methods: [] });
+function LaborModal({
+  isOpen,
+  onClose,
+  onSave,
+  editData,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onSave: () => void;
+  editData: any;
+}) {
+  const [form, setForm] = useState({ name: '', role: '', daily_rate: '0', phone: '', tax_rate: '0', payment_methods: [] as string[] });
   const [newMethod, setNewMethod] = useState('');
 
   useEffect(() => {
@@ -184,7 +235,7 @@ function LaborModal({ isOpen, onClose, onSave, editData }) {
     }
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     try {
       const payload = {
@@ -255,7 +306,17 @@ function LaborModal({ isOpen, onClose, onSave, editData }) {
 }
 
 /* ==================== MATERIAL MODAL ==================== */
-function MaterialModal({ isOpen, onClose, onSave, editData }) {
+function MaterialModal({
+  isOpen,
+  onClose,
+  onSave,
+  editData,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onSave: () => void;
+  editData: any;
+}) {
   const [form, setForm] = useState({ name: '', unit: 'un', category: '' });
 
   useEffect(() => {
@@ -266,7 +327,7 @@ function MaterialModal({ isOpen, onClose, onSave, editData }) {
     }
   }, [editData, isOpen]);
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     try {
       if (editData?.id) {
@@ -316,19 +377,19 @@ function MaterialModal({ isOpen, onClose, onSave, editData }) {
 
 /* ==================== MAIN PAGE ==================== */
 export default function DashboardPage() {
-  const [suppliers, setSuppliers] = useState([]);
-  const [labor, setLabor] = useState([]);
-  const [materials, setMaterials] = useState([]);
-  const [prices, setPrices] = useState([]);
+  const [suppliers, setSuppliers] = useState<any[]>([]);
+  const [labor, setLabor] = useState<any[]>([]);
+  const [materials, setMaterials] = useState<any[]>([]);
+  const [prices, setPrices] = useState<any[]>([]);
   const [filterMaterial, setFilterMaterial] = useState('');
   const [quantity, setQuantity] = useState(1);
-  const [expandedMaterial, setExpandedMaterial] = useState(null);
+  const [expandedMaterial, setExpandedMaterial] = useState<number | null>(null);
 
   // Modals
-  const [supplierModal, setSupplierModal] = useState({ open: false, data: null });
-  const [laborModal, setLaborModal] = useState({ open: false, data: null });
-  const [materialModal, setMaterialModal] = useState({ open: false, data: null });
-  const [deleteConfirm, setDeleteConfirm] = useState({ open: false, type: '', id: null, name: '' });
+  const [supplierModal, setSupplierModal] = useState<{ open: boolean; data: any }>({ open: false, data: null });
+  const [laborModal, setLaborModal] = useState<{ open: boolean; data: any }>({ open: false, data: null });
+  const [materialModal, setMaterialModal] = useState<{ open: boolean; data: any }>({ open: false, data: null });
+  const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; type: string; id: any; name: string }>({ open: false, type: '', id: null, name: '' });
 
   const loadData = useCallback(async () => {
     try {
@@ -360,7 +421,7 @@ export default function DashboardPage() {
   };
 
   const filteredPrices = filterMaterial
-    ? prices.filter((p) => p.material_id == filterMaterial)
+    ? prices.filter((p) => String(p.material_id) === filterMaterial)
     : prices;
 
   return (
@@ -406,7 +467,7 @@ export default function DashboardPage() {
             </thead>
             <tbody>
               {suppliers.length === 0 ? (
-                <tr><td colSpan="7"><div className="empty-state"><div className="empty-state-icon">📦</div><div className="empty-state-text">Nenhum fornecedor cadastrado</div></div></td></tr>
+                <tr><td colSpan={7}><div className="empty-state"><div className="empty-state-icon">📦</div><div className="empty-state-text">Nenhum fornecedor cadastrado</div></div></td></tr>
               ) : (
                 suppliers.map((s) => (
                   <tr key={s.id}>
@@ -416,7 +477,7 @@ export default function DashboardPage() {
                     <td>{s.phone || <span className="text-muted">-</span>}</td>
                     <td>
                       <div className="tags">
-                        {(s.payment_methods || []).map((m, i) => <span key={i} className="tag tag-sm">{m}</span>)}
+                        {(s.payment_methods || []).map((m: string, i: number) => <span key={i} className="tag tag-sm">{m}</span>)}
                       </div>
                     </td>
                     <td>{s.tax_rate || 0}%</td>
@@ -447,7 +508,7 @@ export default function DashboardPage() {
             </thead>
             <tbody>
               {filteredPrices.length === 0 ? (
-                <tr><td colSpan="5"><div className="empty-state"><div className="empty-state-icon">💰</div><div className="empty-state-text">Nenhum preço cadastrado</div></div></td></tr>
+                <tr><td colSpan={5}><div className="empty-state"><div className="empty-state-icon">💰</div><div className="empty-state-text">Nenhum preço cadastrado</div></div></td></tr>
               ) : (
                 filteredPrices.map((p) => {
                   const taxAmount = p.price * (p.tax_rate || 0) / 100;
@@ -481,14 +542,14 @@ export default function DashboardPage() {
             </thead>
             <tbody>
               {materials.length === 0 ? (
-                <tr><td colSpan="5"><div className="empty-state"><div className="empty-state-icon">🧱</div><div className="empty-state-text">Nenhum material cadastrado</div></div></td></tr>
+                <tr><td colSpan={5}><div className="empty-state"><div className="empty-state-icon">🧱</div><div className="empty-state-text">Nenhum material cadastrado</div></div></td></tr>
               ) : (
                 materials.map((m) => {
                   const matPrices = prices.filter((p) => p.material_id === m.id);
                   const isExpanded = expandedMaterial === m.id;
                   return (
-                    <>
-                      <tr key={m.id}>
+                    <React.Fragment key={m.id}>
+                      <tr>
                         <td className="font-medium">{m.name}</td>
                         <td>{m.unit}</td>
                         <td>{m.category || <span className="text-muted">-</span>}</td>
@@ -506,7 +567,7 @@ export default function DashboardPage() {
                       </tr>
                       {isExpanded && matPrices.length > 0 && (
                         <tr key={`exp-${m.id}`}>
-                          <td colSpan="5" style={{ padding: '0 1rem 1rem' }}>
+                          <td colSpan={5} style={{ padding: '0 1rem 1rem' }}>
                             <div className="material-expand">
                               {matPrices.map((p) => (
                                 <div key={p.id} className="price-row">
@@ -518,7 +579,7 @@ export default function DashboardPage() {
                           </td>
                         </tr>
                       )}
-                    </>
+                    </React.Fragment>
                   );
                 })
               )}
@@ -540,7 +601,7 @@ export default function DashboardPage() {
             </thead>
             <tbody>
               {labor.length === 0 ? (
-                <tr><td colSpan="7"><div className="empty-state"><div className="empty-state-icon">👷</div><div className="empty-state-text">Nenhuma mão de obra cadastrada</div></div></td></tr>
+                <tr><td colSpan={7}><div className="empty-state"><div className="empty-state-icon">👷</div><div className="empty-state-text">Nenhuma mão de obra cadastrada</div></div></td></tr>
               ) : (
                 labor.map((l) => (
                   <tr key={l.id}>
@@ -549,7 +610,7 @@ export default function DashboardPage() {
                     <td>{l.phone || <span className="text-muted">-</span>}</td>
                     <td>
                       <div className="tags">
-                        {(l.payment_methods || []).map((m, i) => <span key={i} className="tag tag-sm">{m}</span>)}
+                        {(l.payment_methods || []).map((m: string, i: number) => <span key={i} className="tag tag-sm">{m}</span>)}
                       </div>
                     </td>
                     <td className="font-bold">{formatCurrency(l.daily_rate)}</td>

@@ -1,16 +1,17 @@
 import { supabase, errorResponse } from '@/lib/server';
 
-function getDateFilter(filter) {
+function getDateFilter(filter: string | null): string | null {
   if (!filter) return null;
   const now = new Date();
-  const map = { '24h': 1, '7d': 7, '30d': 30, '90d': 90, 'year': 365 };
+  const map: Record<string, number> = { '24h': 1, '7d': 7, '30d': 30, '90d': 90, 'year': 365 };
   const days = map[filter];
   if (!days) return null;
   return new Date(now.getTime() - days * 24 * 60 * 60 * 1000).toISOString();
 }
 
-export async function GET(request) {
+export async function GET(request: Request) {
   try {
+    if (!supabase) return errorResponse('Supabase não configurado');
     const { searchParams } = new URL(request.url);
     const filter = searchParams.get('filter');
     const dateFrom = getDateFilter(filter);
@@ -25,7 +26,7 @@ export async function GET(request) {
     if (error) throw error;
 
     let csv = 'Data,Descrição,Valor,Categoria,Impostos,Fornecedor,Mão de Obra,Obra\n';
-    (transactions || []).forEach(t => {
+    (transactions || []).forEach((t: any) => {
       const row = [
         t.date || '',
         (t.description || '').replace(/,/g, ';'),
@@ -45,7 +46,7 @@ export async function GET(request) {
         'Content-Disposition': 'attachment; filename=relatorio.csv',
       },
     });
-  } catch (err) {
+  } catch (err: any) {
     return errorResponse(err.message);
   }
 }

@@ -5,8 +5,15 @@ import { api, formatCurrency, formatDate } from '@/lib/api';
 
 export default function RelatoriosPage() {
   const [filter, setFilter] = useState('');
-  const [report, setReport] = useState({ total: 0, totalTax: 0, byCategory: [], bySupplier: [], byLabor: [], byWork: [] });
-  const [csvData, setCsvData] = useState([]);
+  const [report, setReport] = useState<{
+    total: number;
+    totalTax: number;
+    byCategory: any[];
+    bySupplier: any[];
+    byLabor: any[];
+    byWork: any[];
+  }>({ total: 0, totalTax: 0, byCategory: [], bySupplier: [], byLabor: [], byWork: [] });
+  const [csvData, setCsvData] = useState<any[]>([]);
   const [showCSV, setShowCSV] = useState(false);
 
   const loadReport = useCallback(async () => {
@@ -117,7 +124,7 @@ export default function RelatoriosPage() {
               </thead>
               <tbody>
                 {csvData.length === 0 ? (
-                  <tr><td colSpan="8"><div className="empty-state"><div className="empty-state-text">Nenhum dado para o período selecionado</div></div></td></tr>
+                  <tr><td colSpan={8}><div className="empty-state"><div className="empty-state-text">Nenhum dado para o período selecionado</div></div></td></tr>
                 ) : (
                   csvData.map((t) => (
                     <tr key={t.id}>
@@ -148,7 +155,7 @@ export default function RelatoriosPage() {
             <thead><tr><th>Categoria</th><th style={{ textAlign: 'right' }}>Total</th></tr></thead>
             <tbody>
               {report.byCategory.length === 0 ? (
-                <tr><td colSpan="2" className="text-center text-muted" style={{ padding: '1.5rem' }}>Sem dados</td></tr>
+                <tr><td colSpan={2} className="text-center text-muted" style={{ padding: '1.5rem' }}>Sem dados</td></tr>
               ) : (
                 report.byCategory.map((c, i) => (
                   <tr key={i}>
@@ -169,7 +176,7 @@ export default function RelatoriosPage() {
             <thead><tr><th>Fornecedor</th><th style={{ textAlign: 'right' }}>Total</th></tr></thead>
             <tbody>
               {report.bySupplier.length === 0 ? (
-                <tr><td colSpan="2" className="text-center text-muted" style={{ padding: '1.5rem' }}>Sem dados</td></tr>
+                <tr><td colSpan={2} className="text-center text-muted" style={{ padding: '1.5rem' }}>Sem dados</td></tr>
               ) : (
                 report.bySupplier.map((s, i) => (
                   <tr key={i}>
@@ -192,7 +199,7 @@ export default function RelatoriosPage() {
             <thead><tr><th>Trabalhador</th><th style={{ textAlign: 'right' }}>Total</th></tr></thead>
             <tbody>
               {report.byLabor.length === 0 ? (
-                <tr><td colSpan="2" className="text-center text-muted" style={{ padding: '1.5rem' }}>Sem dados</td></tr>
+                <tr><td colSpan={2} className="text-center text-muted" style={{ padding: '1.5rem' }}>Sem dados</td></tr>
               ) : (
                 report.byLabor.map((l, i) => (
                   <tr key={i}>
@@ -213,7 +220,7 @@ export default function RelatoriosPage() {
             <thead><tr><th>Obra</th><th style={{ textAlign: 'right' }}>Total</th></tr></thead>
             <tbody>
               {(report.byWork || []).length === 0 ? (
-                <tr><td colSpan="2" className="text-center text-muted" style={{ padding: '1.5rem' }}>Sem dados</td></tr>
+                <tr><td colSpan={2} className="text-center text-muted" style={{ padding: '1.5rem' }}>Sem dados</td></tr>
               ) : (
                 report.byWork.map((w, i) => (
                   <tr key={i}>
